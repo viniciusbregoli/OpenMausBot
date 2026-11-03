@@ -21,12 +21,12 @@ security create-keychain -p test "$KC"; security set-keychain-settings "$KC"; se
 : > pids
 start_cloud() { id=$1; port=$2; origin=$3; secret=$4; team=$5; name=$6; credit=$7; mkdir -p $F/clouds/$id/home $F/clouds/$id/data
   ( export HOME=$F/clouds/$id/home ELECTRON_RUN_AS_NODE=1 OMB_DATA_DIR=$F/clouds/$id/data OMB_PORT=$port OMB_WEBHOOK_PORT=$((port+1)) OMB_STATIC_DIR=$R/ui OMB_RESOURCES_PATH=$R OMB_SKILLS_DIR=$R/skills OMB_APP_VERSION=0.1.140 OMB_CLOUD_MACHINE_ID=fixture-$id OMB_CLOUD_ADMIN_URL=https://cloud.openmausbot.com OMB_CLOUD_BOOTSTRAP_SECRET=$secret OMB_PUBLIC_URL=$origin NODE_EXTRA_CA_CERTS=$F/ca.pem
-    if [ -n "$team" ]; then export OMB_CLOUD_ROLE=team OMB_CLOUD_TEAM_ID=$team OMB_CLOUD_TEAM_NAME="$name"; else export OMB_CLOUD_ROLE=home; fi
+    if [ "$team" != "-" ]; then export OMB_CLOUD_ROLE=team OMB_CLOUD_TEAM_ID=$team OMB_CLOUD_TEAM_NAME="$name"; else export OMB_CLOUD_ROLE=home; fi
     if [ "$credit" = "True" ]; then export OMB_CLOUD_AI_URL=https://cloud.openmausbot.com/api/cloud/services/ai/v1 OMB_CLOUD_AI_TOKEN=omb_ai_abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQ; fi
     nohup "$BIN" $R/server/index.js > $OUT/cloud-$id.log 2>&1 & echo $! >> $F/pids ) }
 python3 -c "
 import json
-for c in json.load(open('scenario.json'))['clouds'].values(): print(c['id'],c['port'],c['origin'],c['secret'],c.get('teamId',''),c['name'],c.get('credit',False),sep='\t')
+for c in json.load(open('scenario.json'))['clouds'].values(): print(c['id'],c['port'],c['origin'],c['secret'],c.get('teamId','-'),c['name'],c.get('credit',False),sep='\t')
 " > clouds.tsv
 while IFS=$'\t' read -r id port origin secret team name credit; do start_cloud $id $port $origin $secret "$team" "$name" "$credit"; done < clouds.tsv
 FIXTURE_PORT=443 nohup node admin.mjs $F > $OUT/admin.log 2>&1 &

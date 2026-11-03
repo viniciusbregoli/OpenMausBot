@@ -60,7 +60,8 @@ async function admin(req, res, text) {
   }
   if (!path.startsWith("/api/cloud/desktop/")) { log({ side: "admin", unknown: path }); return send(res, 404, { error: "not_found" }); }
   const route = path.slice("/api/cloud/desktop/".length);
-  if (route === "authorize" || route === "token") return send(res, 404, { error: "not_found" });
+  if (route === "authorize") { log({ side: "admin", event: "BROWSER_APPROVAL_STARTED", body: text.slice(0, 160) }); return send(res, 200, { deviceCode: "d".repeat(43), userCode: "ABCD-EFGH", verificationUri: "https://cloud.openmausbot.com/cloud/desktop?code=ABCD-EFGH", verificationUriComplete: "https://cloud.openmausbot.com/cloud/desktop?code=ABCD-EFGH", expiresIn: 600, interval: 5, cloudContractVersion: 1 }); }
+  if (route === "token") return send(res, 400, { error: "authorization_pending" });
   if (!entry) return send(res, 401, { error: "invalid_token" });
   if (route === "session" && req.method === "DELETE") { revoked.add(token); return send(res, 200, { ok: true }); }
   if (route === "session") return send(res, 200, sessionBody(entry));
@@ -92,6 +93,7 @@ const server = createServer({ key: readFileSync(join(dir, "key.pem")), cert: rea
   req.on("data", (chunk) => chunks.push(chunk));
   req.on("end", () => {
     const body = Buffer.concat(chunks), host = (req.headers.host ?? "").split(":")[0];
+    if (host === "cloud.openmausbot.com" && (req.url ?? "").startsWith("/cloud")) { res.writeHead(200, { "content-type": "text/html" }); return void res.end("<h1>Fixture page standing in for the Cloud page</h1>"); }
     if (host === "checkout.dodopayments.com") { res.writeHead(200, { "content-type": "text/html" }); return void res.end("<h1>Fixture page standing in for the payment page</h1>"); }
     if (ADMIN_HOSTS.has(host)) return void admin(req, res, body.toString("utf8")).catch((error) => { log({ side: "admin", error: String(error?.message ?? error).slice(0, 200) }); send(res, 500, { error: "fixture" }); });
     const cloud = cloudOfHost(host);

@@ -104,7 +104,8 @@ async function openYou() {
   return until(() => within(main, async (page) => { const rows = await page.eval(`[...document.querySelectorAll('[role^="menuitem"]')].map((el) => (el.textContent || "").trim())`); return rows.length ? rows : null; }), "the You menu's rows");
 }
 const escape = () => within(main, async (page) => { await page.send("Input.dispatchKeyEvent", { type: "keyDown", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 }); await page.send("Input.dispatchKeyEvent", { type: "keyUp", key: "Escape", code: "Escape", windowsVirtualKeyCode: 27 }); await delay(400); });
-const openSettings = async () => { const rows = await openYou(); await click(/^Settings$/); await delay(1200); return rows; };
+const settingsOpen = () => within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog]')].some((el) => /Usage & billing|General/.test(el.innerText || ""))`));
+const openSettings = async () => { let rows = []; for (let i = 0; i < 4; i++) { rows = await openYou().catch(() => rows); await delay(350); await click(/^Settings$/).catch(() => {}); await delay(1200); if (await settingsOpen()) return rows; await escape(); await delay(600); } throw new Error("Settings would not open"); };
 const typeInto = (selector, text) => within(main, async (page) => { await page.eval(`document.querySelector(${JSON.stringify(selector)})?.focus()`); await page.send("Input.insertText", { text }); await delay(200); });
 const enter = () => within(main, async (page) => { for (const type of ["keyDown", "keyUp"]) await page.send("Input.dispatchKeyEvent", { type, key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: type === "keyDown" ? "\r" : undefined }); });
 const dialogsOpen = () => within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog],[role=alertdialog]')].map((el) => (el.innerText || "").slice(0, 200))`));
@@ -145,9 +146,11 @@ const STAGE = new Set((process.env.STAGES ?? "fresh,signedout,trialbutton,member
 if (STAGE.has("fresh")) await step("new install, first launch", async () => {
   reset(); control({}); await launch({ quiet: false });
   await shot("fresh-1-first-screen");
+  const others = await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("button,a")].filter((el) => el.getClientRects().length).find((el) => /^Other ways to connect$/.test((el.innerText || "").trim()))`));
+  if (others) { await delay(1200); await shot("fresh-1b-other-ways"); note("new install: Other ways to connect", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog]')].map((el) => el.innerText.slice(0, 700))`))); await escape().catch(() => {}); await delay(500); await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("button,a")].filter((el) => el.getClientRects().length).find((el) => /^Back$/.test((el.innerText || "").trim()))`)).catch(() => {}); await delay(600); }
   for (let i = 2; i < 7; i++) {
     const before = await within(main, (page) => page.eval("document.body.innerText.slice(0,300)"));
-    const moved = await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("button,a")].filter((el) => el.getClientRects().length).find((el) => /^(continue|set up later|skip|skip for now|next|get started|not now|maybe later)$/i.test((el.innerText || "").trim()))`));
+    const moved = await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("button,a")].filter((el) => el.getClientRects().length).find((el) => /^(continue|set up later|skip|skip for now|next|get started|not now|maybe later|create chief of staff)$/i.test((el.innerText || "").trim()))`));
     if (!moved) break;
     await delay(1800);
     const after = await within(main, (page) => page.eval("document.body.innerText.slice(0,300)"));
@@ -166,8 +169,10 @@ if (STAGE.has("signedout")) await step("installed app, never signed in, has acce
   await openSettings(); await shot("out-4-settings-general-account");
   note("settings first page says", true, await within(main, (page) => page.eval(`document.querySelector('[role=dialog]')?.innerText?.slice(0, 900) ?? document.body.innerText.slice(0, 900)`)));
   await click(/^Usage & billing$|^Usage and billing$/); await delay(1000); await shot("out-5-settings-usage-billing"); await escape(); await escape();
-  const header = await within(main, (page) => clickExpr(page, byText(/^This computer$/)));
-  note("signed out: a 'This computer' switcher to press", Boolean(header)); await delay(500); await shot("out-6-switcher-open"); await escape();
+  await openYou(); await delay(300); await click(/^Switch to…$/); await delay(900); await shot("out-6-you-menu-switch-to"); note("signed out: You > Switch to…", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('[role^="menuitem"],[role=dialog]')].map((el) => (el.innerText || "").trim().slice(0, 240))`))); await escape(); await escape(); await delay(500);
+  await openYou(); await delay(300); await click(/^MausBot Cloud$/); await delay(1500); await shot("out-7-you-menu-mausbot-cloud"); note("signed out: You > MausBot Cloud opens", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog]')].map((el) => (el.innerText || "").slice(0, 500))`))); await escape(); await escape(); await delay(500);
+  // What the portal's deep link would do on this computer (a second launch with the link, as the OS hands it over).
+  const opened = spawn(BIN, ["openmausbot://cloud"], { env: { ...process.env, NODE_EXTRA_CA_CERTS: join(F, "ca.pem") }, stdio: "ignore" }); opened.on("error", () => {}); await delay(5000); await shot("out-8-after-the-deep-link"); note("signed out: the deep link opens", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog]')].map((el) => (el.innerText || "").slice(0, 700))`))); note("signed out: the deep link's Admin calls", true, adminLog().filter((row) => row.path?.includes("authorize") || row.path?.includes("token")).slice(-4).map((row) => row.path)); await escape(); await escape();
 });
 // ---------------------------------------------------------------- what if the teammate presses the big button?
 if (STAGE.has("trialbutton")) await step("the teammate presses Start free trial", async () => {
@@ -273,6 +278,7 @@ if (STAGE.has("studiosui")) await step("the owner sets up two studios by hand", 
   const second = await newBot("Rooms"); await second.go(); note("the Department dropdown now", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog] select')].map((el) => [...el.options].map((o) => o.text))`))); await shot("studios-8-second-bot"); await click(/^Create bot$/); await delay(3000); await popups("studios-bot2");
   await within(main, (page) => clickExpr(page, rowOf("Rooms"), { button: "right" })); await delay(600); await click(/^Move to department$/); await delay(600); await click(/^New department…$/); await delay(600);
   await within(main, async (page) => { await page.eval(`(() => { const el = document.querySelector('input[aria-label="New department name"]') || document.activeElement; el?.focus(); })()`); await page.send("Input.insertText", { text: "Studio B" }); }); await delay(200); await enter(); await delay(1500); await shot("studios-9-two-departments");
+  await openYou(); await delay(300); await click(/^Team map$/); await delay(1800); await shot("studios-9b-team-map"); await within(main, (page) => clickExpr(page, `document.querySelector('summary[aria-label]')`)); await delay(500); await shot("studios-9c-team-map-add"); note("Team map's add menu", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('details[open] button')].map((el) => (el.innerText || "").trim())`))); await escape(); await within(main, (page) => clickExpr(page, rowOf("Bookkeeping"))); await delay(1200);
   // Sharing Bookkeeping: only the owner.
   const share = async (name) => { await within(main, (page) => clickExpr(page, rowOf(name))); await delay(1500); const pressed = await within(main, (page) => clickExpr(page, `document.querySelector('[aria-label="Share"]') || ${byText(/^Share$/)}`)); note(`Share button beside ${name}`, Boolean(pressed)); await delay(1000); return pressed; };
   await share("Bookkeeping"); await shot("studios-10-share-dialog"); note("Share dialog says", true, await dialogText());
