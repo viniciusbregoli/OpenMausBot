@@ -56,58 +56,29 @@ beforeAll(async () => {
 }, 180_000);
 afterAll(async () => { await fx?.close(); });
 
-it("the rest of the two studios", async () => {
-  const make = async (token: string, name: string, section: string, access?: unknown) => {
-    const made = await team.as(token, "POST", "/api/bots", { name, section });
-    if (made.status !== 201) return { error: made.status, body: made.body } as unknown as Bot;
-    if (access) { const set = await team.as(token, "PUT", `/api/bots/${made.body.bot.id}/access`, access); if (set.status !== 200) throw new Error(`${name} access: ${set.status} ${JSON.stringify(set.body)}`); }
-    return made.body.bot as Bot;
-  };
-  const ONLY_OWNER = { everyone: "none", people: {} }, B = { everyone: "none", people: { [MEMBER.email]: "chat" } };
-  const copy = async (token: string, id: string) => (await bots(token)).find((bot) => bot.id === id);
-  // The moment before the owner restricts it.
-  const bookkeeping = await make(owner, "Bookkeeping", "Studio A");
-  record("right after New bot, before Share: does the member list it?", { memberLists: Boolean(await copy(member, bookkeeping.id)), yourAccess: (await copy(member, bookkeeping.id))?.yourAccess, ownerCopy: (await copy(owner, bookkeeping.id))?.access });
-  await team.as(owner, "PUT", `/api/bots/${bookkeeping.id}/access`, ONLY_OWNER);
-  const rooms = await make(owner, "Rooms", "Studio B", B), hours = await make(owner, "Staff Hours", "Studio B", B), sales = await make(owner, "Sales", "Studio B", B);
-  // What a member's own new bot is.
-  const mine = await make(member, "Marketing Helper", "");
-  record("a bot the member makes", { status: (mine as unknown as { error?: number }).error ?? 201, body: JSON.stringify(mine).slice(0, 300), ownerSees: Boolean(mine.id && await copy(owner, mine.id)), access: mine.id ? (await copy(owner, mine.id))?.access : null, visibility: mine.id ? (await copy(owner, mine.id))?.visibility : null });
-  // Whose MausBot is whose, and what an admin can do with someone else's.
-  const all = await bots(owner), people = (bot: Bot) => JSON.stringify(bot.visibility ?? "");
-  const defaults = all.filter((bot) => (bot as { defaultBot?: unknown }).defaultBot);
-  record("every MausBot the owner's list has", defaults.map((bot) => ({ name: bot.name, visibility: bot.visibility, yourAccess: bot.yourAccess, hidden: (bot as { sidebarHidden?: unknown }).sidebarHidden })));
-  const ownMaus = defaults.find((bot) => people(bot).includes(OWNER.email)), maraMaus = (await bots(member)).find((bot) => (bot as { defaultBot?: unknown }).defaultBot)!;
-  const maraMain = maraMaus.mainThreadId ?? maraMaus.threadId;
-  await say(member, maraMaus.id, maraMain, "My salary is MARAPRIVATE", null);
-  const maraThreads = ((await copy(member, maraMaus.id)) as unknown as { tasks?: Array<{ threadId: string; private?: boolean; title?: string; inbox?: boolean }> }).tasks;
-  record("the member's MausBot's chats, as the member sees them", maraThreads?.map((task) => ({ title: task.title, private: task.private, inbox: task.inbox, isMain: task.threadId === maraMain })));
-  const peek = await team.as(owner, "GET", `/api/threads/${maraMain}/messages`);
-  record("the owner reading the member's MausBot's main chat", { status: peek.status, seesWords: JSON.stringify(peek.body).includes("MARAPRIVATE") });
-  const poke = await team.as(owner, "POST", `/api/bots/${maraMaus.id}/messages`, { text: "Hello from the owner", threadId: maraMain });
-  record("the owner writing in it", { status: poke.status, body: JSON.stringify(poke.body).slice(0, 200) });
-  // The owner's own MausBot is the same audience as Bookkeeping.
-  if (ownMaus) {
-    const before = ((await copy(owner, bookkeeping.id)) as unknown as { tasks?: unknown[] }).tasks?.length;
-    record("owner's own MausBot -> Bookkeeping", await say(owner, ownMaus.id, ownMaus.mainThreadId ?? ownMaus.threadId, "Pass this to Bookkeeping", [handOff(bookkeeping.id)]));
-    await until(idle, 30_000); await sleep(1500);
-    const bk = (await copy(owner, bookkeeping.id)) as unknown as { tasks?: Array<{ title?: string; threadId: string }> };
-    record("Bookkeeping after it", { before, now: bk.tasks?.length, lines: bk.tasks ? await Promise.all(bk.tasks.map(async (task) => ({ title: task.title, last: (await rows(owner, task.threadId)).at(-2)?.text?.slice(0, 160) }))) : null });
-    record("a routine on the owner's own MausBot -> Bookkeeping", await routineRun(owner, ownMaus.id, "Evening relay", [handOff(bookkeeping.id, { reply: "none" })]));
-    record("and can MausBot read what reached the owner's inbox?", { inboxTools: "message_person lines land in this bot's inbox chat", prompt: JSON.stringify(dump()?.prompt ?? "").includes("MARA") });
+it("numbers in a Studio B group chat", async () => {
+  const make = async (name: string, section: string, access: unknown) => { const made = await team.as(owner, "POST", "/api/bots", { name, section }); const bot = made.body.bot as Bot; await team.as(owner, "PUT", `/api/bots/${bot.id}/access`, access); return bot; };
+  const B = { everyone: "none", people: { [MEMBER.email]: "chat" } };
+  const rooms = await make("Rooms", "Studio B", B), hours = await make("Staff Hours", "Studio B", B), sales = await make("Sales", "Studio B", B);
+  const made = await team.as(member, "POST", "/api/groups", { memberIds: [rooms.id, hours.id, sales.id], name: "Studio B numbers", setup: { bulletin: "", defaultResponder: { kind: "everyone" } } });
+  const group = made.body.group as { id: string; threadId: string };
+  record("the member made the group chat", { status: made.status, ownerCanRead: (await team.as(owner, "GET", `/api/threads/${group.threadId}/messages`)).status });
+  script([{ name: "memory_update", server: "agents", input: { action: "append", text: "Rooms today: 12 GROUPCHATNUMBER" } }]);
+  rmSync(join(team.home, "dump.json"), { force: true });
+  const posted = await team.as(member, "POST", `/api/groups/${group.id}/messages`, { text: "Rooms today: 12 GROUPCHATNUMBER", threadId: group.threadId });
+  await until(async () => (await idle()) && existsSync(join(team.home, "dump.json")), 60_000); await sleep(1500);
+  record("the member's numbers in it", { status: posted.status, lines: (await rows(owner, group.threadId)).slice(-4).map((row) => ({ kind: row.kind, text: row.text?.slice(0, 90), tool: row.tool?.name })) });
+  script(null); rmSync(join(team.home, "dump.json"), { force: true });
+  const routine = await team.as(owner, "POST", "/api/routines", { name: "Evening totals", prompt: "Add up today's numbers.", groupId: group.id, schedule: { type: "interval", everyMinutes: 1440, anchorAt: Date.now() + 86_400_000 } });
+  record("the owner's routine on the group chat", { status: routine.status, body: JSON.stringify(routine.body).slice(0, 240) });
+  if (routine.status === 201) {
+    const ran = await team.as(owner, "POST", `/api/routines/${routine.body.routine.id}/run`);
+    let run: Record<string, unknown> | undefined;
+    await until(async () => { run = ((await team.as(owner, "GET", "/api/routines")).body.runs as Array<Record<string, unknown>> | undefined)?.find((candidate) => candidate.id === ran.body.run?.id); return Boolean(run) && ["completed", "failed", "error", "cancelled", "waiting"].includes(String(run!.status)); }, 90_000);
+    await sleep(1000);
+    const seen = dump();
+    record("what that routine's turn is given", { status: run?.status, systemHasIt: seen?.systemPrompt?.includes("GROUPCHATNUMBER") ?? null, promptHasIt: JSON.stringify(seen?.prompt ?? "").includes("GROUPCHATNUMBER"), threadIsTheGroup: run?.threadId === group.threadId });
   }
-  // A place in Studio B for numbers: one group chat with the three bots, made by each of them.
-  const groupBody = { memberIds: [rooms.id, hours.id, sales.id], name: "Studio B numbers", setup: { bulletin: "", defaultResponder: { kind: "everyone" } } };
-  const byMember = await team.as(member, "POST", "/api/groups", groupBody); const byOwner = await team.as(owner, "POST", "/api/groups", { ...groupBody, name: "Studio B numbers 2" });
-  record("a group chat of the three Studio B bots", { member: byMember.status, memberBody: JSON.stringify(byMember.body).slice(0, 240), owner: byOwner.status });
-  const mixedAsMember = await team.as(member, "POST", "/api/groups", { memberIds: [rooms.id, bookkeeping.id], name: "Mixed", setup: { bulletin: "", defaultResponder: { kind: "everyone" } } });
-  record("the member naming Bookkeeping in a group chat", { status: mixedAsMember.status, body: JSON.stringify(mixedAsMember.body).slice(0, 300) });
-  // A person's level on Bookkeeping as an Admin of the team: what making the Studio B manager an Admin does.
-  const adminToken = (await team.pair({ email: "ben@acme.test", role: "admin" as const })).token!;
-  const asAdmin = await copy(adminToken, bookkeeping.id);
-  record("a team Admin and Bookkeeping", { lists: Boolean(asAdmin), yourAccess: asAdmin?.yourAccess, readsMain: (await team.as(adminToken, "GET", `/api/threads/${bookkeeping.mainThreadId ?? bookkeeping.threadId}/messages`)).status });
-  // Who is on the Add people list: only those who opened the team.
-  const peopleBefore = await team.as(owner, "GET", "/api/team/people");
-  const addStranger = await team.as(owner, "PUT", `/api/bots/${sales.id}/access`, { everyone: "none", people: { [MEMBER.email]: "chat", "accepted-but-never-opened@acme.test": "chat" } });
-  record("sharing with someone who joined but never opened the team", { list: (peopleBefore.body.people ?? []).map((one: { email: string }) => one.email), status: addStranger.status, body: JSON.stringify(addStranger.body).slice(0, 200) });
-}, 600_000);
+  const line = await team.as(owner, "GET", "/api/inbox");
+  record("owner's inbox after it", (line.body.rows ?? []).slice(0, 4).map((row: Record<string, unknown>) => ({ kind: row.kind, text: String(row.text ?? "").slice(0, 90) })));
+}, 300_000);
