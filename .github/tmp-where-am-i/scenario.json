@@ -1,0 +1,52 @@
+{
+ "accounts": {
+  "alice": {
+   "id": "acct-alice",
+   "email": "alice@omb-test.example",
+   "clouds": [
+    "studio",
+    "older",
+    "acme"
+   ],
+   "plan": "pro"
+  },
+  "tess": {
+   "id": "acct-tess",
+   "email": "tess@omb-test.example",
+   "clouds": [
+    "acme"
+   ],
+   "plan": "free"
+  }
+ },
+ "clouds": {
+  "studio": {
+   "id": "studio",
+   "name": "Studio",
+   "origin": "https://studio.omb-test.example",
+   "port": 18810,
+   "secret": "QpsXpSxNEOqZCbQPgf3x8wwb4FQCdN42hUfNaLQL2aMwqHcGU7qeZA",
+   "primary": true,
+   "color": "blue"
+  },
+  "older": {
+   "id": "older",
+   "name": "Older Cloud Page",
+   "origin": "https://older.omb-test.example",
+   "port": 18820,
+   "secret": "Jj_qwGd00-pApISLeKxPfs52OMKJblqMY-SH0xX8tTF76lH_SRICxg",
+   "color": "green",
+   "release": "older"
+  },
+  "acme": {
+   "id": "acme",
+   "name": "Acme",
+   "origin": "https://acme.omb-test.example",
+   "port": 18830,
+   "secret": "cwwosmiBv2Lq1sp3n37UDvyeQHquK2o20KOATB25y3IsnZ5JTiELyg",
+   "teamId": "team-acme",
+   "role": "member",
+   "color": "amber"
+  }
+ }
+}

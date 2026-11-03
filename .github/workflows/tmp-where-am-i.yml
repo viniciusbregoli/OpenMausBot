@@ -1,0 +1,79 @@
+name: tmp where am i
+on:
+  push:
+    branches: [tmp/where-am-i-test]
+permissions:
+  contents: read
+concurrency:
+  group: tmp-where-am-i
+  cancel-in-progress: true
+jobs:
+  realapp:
+    runs-on: macos-latest
+    timeout-minutes: 85
+    env:
+      APP_DIR: ${{ github.workspace }}/app-under-test
+      OUT: ${{ github.workspace }}/out
+      PR_HEAD: 95196502f
+      OLDER_RELEASE: "0.1.139"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 40
+          persist-credentials: false
+      - name: This branch adds only the test files to the PR's head
+        run: |
+          mkdir -p "$OUT" "$APP_DIR"
+          git diff --name-only "$PR_HEAD" HEAD | tee "$OUT/diff-from-pr-head.txt"
+          ! grep -vE '^\.github/(workflows/tmp-where-am-i\.yml|tmp-where-am-i/)' "$OUT/diff-from-pr-head.txt"
+          git log -1 --format=%H "$PR_HEAD" | tee "$OUT/pr-head.txt"
+      - uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - name: Built app for this head
+        id: built
+        uses: actions/cache/restore@v4
+        with:
+          path: built-app.tgz
+          key: where-am-i-app-95196502f-arm64-1
+      - name: Build the app from the PR's head
+        if: steps.built.outputs.cache-hit != 'true'
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm package:prepare
+          pnpm build:speech
+          pnpm build:cua
+          pnpm exec electron-builder --mac dir --arm64 --publish never -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false
+          COPYFILE_DISABLE=1 tar -czf built-app.tgz -C release/mac-arm64 OpenMausBot.app
+      - name: Keep the built app for a re-run, whatever the test finds
+        if: steps.built.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: built-app.tgz
+          key: where-am-i-app-95196502f-arm64-1
+      - name: Unpack
+        run: |
+          tar -xzf built-app.tgz -C "$APP_DIR"
+          plutil -extract CFBundleShortVersionString raw "$APP_DIR/OpenMausBot.app/Contents/Info.plist"
+      - name: Fixture
+        run: zsh .github/tmp-where-am-i/setup.sh 2>&1 | tee "$OUT/setup.log"
+      - name: Drive the real app
+        timeout-minutes: 30
+        run: node .github/tmp-where-am-i/drive.mjs 2>&1 | tee "$OUT/drive.log"; exit ${PIPESTATUS[0]}
+        shell: bash
+      - name: Collect logs
+        if: always()
+        run: |
+          cp -R "$HOME/Library/Logs/OpenMausBot" "$OUT/app-logs" 2>/dev/null || true
+          cp "$RUNNER_TEMP/fx/admin.jsonl" "$OUT/" 2>/dev/null || true
+          sw_vers > "$OUT/macos.txt"
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: where-am-i
+          path: out
+          retention-days: 3
