@@ -60,7 +60,7 @@ async function admin(req, res, text) {
   }
   if (!path.startsWith("/api/cloud/desktop/")) { log({ side: "admin", unknown: path }); return send(res, 404, { error: "not_found" }); }
   const route = path.slice("/api/cloud/desktop/".length);
-  if (route === "authorize") { log({ side: "admin", event: "BROWSER_APPROVAL_STARTED", body: text.slice(0, 160) }); return send(res, 200, { deviceCode: "d".repeat(43), userCode: "ABCD-EFGH", verificationUri: "https://cloud.openmausbot.com/cloud/desktop?code=ABCD-EFGH", verificationUriComplete: "https://cloud.openmausbot.com/cloud/desktop?code=ABCD-EFGH", expiresIn: 600, interval: 5, cloudContractVersion: 1 }); }
+  if (route === "authorize") { log({ side: "admin", event: "BROWSER_APPROVAL_STARTED", body: text.slice(0, 160) }); return send(res, 200, { deviceCode: "d".repeat(43), userCode: "ABCDE-FGHJK", verificationUri: "https://cloud.openmausbot.com/cloud/desktop?code=ABCDE-FGHJK", verificationUriComplete: "https://cloud.openmausbot.com/cloud/desktop?code=ABCDE-FGHJK", expiresIn: 600, interval: 5, cloudContractVersion: 1 }); }
   if (route === "token") return send(res, 400, { error: "authorization_pending" });
   if (!entry) return send(res, 401, { error: "invalid_token" });
   if (route === "session" && req.method === "DELETE") { revoked.add(token); return send(res, 200, { ok: true }); }
