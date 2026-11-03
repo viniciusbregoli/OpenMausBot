@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
-          fetch-depth: 3
+          fetch-depth: 8
           persist-credentials: false
       - run: git diff --name-only db8ae8d69eab2d7f4cb1bf4430099d91bf65cf9d HEAD; ! git diff --name-only db8ae8d69eab2d7f4cb1bf4430099d91bf65cf9d HEAD | grep -vE '^\.github/(workflows/tmp-team-studios\.yml|tmp-team-studios/)'
       - uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3
