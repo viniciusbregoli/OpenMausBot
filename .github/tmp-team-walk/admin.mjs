@@ -65,7 +65,7 @@ async function admin(req, res, text) {
   if (!entry) return send(res, 401, { error: "invalid_token" });
   if (route === "session" && req.method === "DELETE") { revoked.add(token); return send(res, 200, { ok: true }); }
   if (route === "session") return send(res, 200, sessionBody(entry));
-  if (route === "checkout") { log({ side: "admin", event: "CHECKOUT_OPENED", account: entry.account.email, body: text.slice(0, 200) }); return send(res, 200, { url: `https://checkout.dodopayments.com/session/cks_fixture${++serial}` }); }
+  if (route === "checkout") { log({ side: "admin", event: "CHECKOUT_OPENED", account: entry.account.email, body: text.slice(0, 200) }); return send(res, 200, { cloudContractVersion: 1, url: `https://checkout.dodopayments.com/session/cks_fixture${++serial}` }); }
   if (route === "pairing") {
     const home = entry.account.clouds.map((id) => scenario.clouds[id]).find((cloud) => cloud.primary);
     if (!home) return send(res, 404, { error: "not_found" });
