@@ -1,0 +1,76 @@
+name: tmp team onboarding walk
+on:
+  push:
+    branches: [tmp/team-onboarding-walk]
+permissions:
+  contents: read
+concurrency:
+  group: tmp-team-walk
+  cancel-in-progress: true
+jobs:
+  walk:
+    runs-on: macos-latest
+    timeout-minutes: 75
+    env:
+      APP_DIR: ${{ github.workspace }}/app-under-test
+      OUT: ${{ github.workspace }}/out
+      MAIN_AT: db8ae8d69eab2d7f4cb1bf4430099d91bf65cf9d
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 3
+          persist-credentials: false
+      - name: This branch adds only the walk's files to main
+        run: |
+          mkdir -p "$OUT" "$APP_DIR"
+          git diff --name-only "$MAIN_AT" HEAD | tee "$OUT/diff-from-main.txt"
+          ! grep -vE '^\.github/(workflows/tmp-team-walk\.yml|tmp-team-walk/)' "$OUT/diff-from-main.txt"
+      - uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - name: Built app for main
+        id: built
+        uses: actions/cache/restore@v4
+        with:
+          path: built-app.tgz
+          key: team-walk-app-db8ae8d69-arm64-1
+      - name: Build the app from main
+        if: steps.built.outputs.cache-hit != 'true'
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm package:prepare
+          pnpm build:speech
+          pnpm build:cua
+          pnpm exec electron-builder --mac dir --arm64 --publish never -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false
+          COPYFILE_DISABLE=1 tar -czf built-app.tgz -C release/mac-arm64 OpenMausBot.app
+      - name: Keep the built app for a re-run
+        if: steps.built.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: built-app.tgz
+          key: team-walk-app-db8ae8d69-arm64-1
+      - name: Unpack
+        run: |
+          tar -xzf built-app.tgz -C "$APP_DIR"
+          plutil -extract CFBundleShortVersionString raw "$APP_DIR/OpenMausBot.app/Contents/Info.plist" | tee "$OUT/app-version.txt"
+      - name: Fixture
+        run: zsh .github/tmp-team-walk/setup.sh 2>&1 | tee "$OUT/setup.log"
+      - name: Walk the real app
+        timeout-minutes: 30
+        run: cp .github/tmp-team-walk/drive.mjs "$RUNNER_TEMP/fx/drive.mjs"; node "$RUNNER_TEMP/fx/drive.mjs" 2>&1 | tee "$OUT/drive.log"; exit ${PIPESTATUS[0]}
+        shell: bash
+      - name: Collect logs
+        if: always()
+        run: |
+          cp -R "$HOME/Library/Logs/OpenMausBot" "$OUT/app-logs" 2>/dev/null || true
+          cp "$RUNNER_TEMP/fx/admin.jsonl" "$OUT/" 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: team-walk
+          path: out
+          retention-days: 3

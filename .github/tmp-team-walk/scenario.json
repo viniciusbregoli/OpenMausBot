@@ -1,0 +1,909 @@
+{
+ "publicConfig": {
+  "name": "OpenMausBot",
+  "surface": "cloud",
+  "providers": [],
+  "cloudContractVersion": 1,
+  "capabilities": {
+   "consumerCloud": true,
+   "cloudComputers": true,
+   "teams": true
+  },
+  "license": {
+   "state": "active"
+  },
+  "moves": "off",
+  "plans": [
+   {
+    "tier": "starter",
+    "label": "Starter",
+    "price": {
+     "currency": "USD",
+     "amount": 1500,
+     "interval": "month",
+     "regularAmount": null,
+     "note": null
+    },
+    "allowances": {
+     "cpus": 2,
+     "cpuKind": "shared",
+     "memoryMb": 2048,
+     "swapMb": 0,
+     "diskGb": 10,
+     "maxDiskGb": 10,
+     "computers": 1,
+     "computerHours": 10,
+     "voiceCharacters": 10000,
+     "sleeps": true,
+     "snapshotDays": 7
+    }
+   },
+   {
+    "tier": "pro",
+    "label": "Pro",
+    "price": {
+     "currency": "USD",
+     "amount": 4900,
+     "interval": "month",
+     "regularAmount": null,
+     "note": null
+    },
+    "allowances": {
+     "cpus": 1,
+     "cpuKind": "shared",
+     "memoryMb": 2048,
+     "swapMb": 0,
+     "diskGb": 10,
+     "maxDiskGb": 10,
+     "computers": 2,
+     "computerHours": 200,
+     "voiceCharacters": 60000,
+     "sleeps": false,
+     "snapshotDays": 30
+    }
+   },
+   {
+    "tier": "max",
+    "label": "Max",
+    "price": {
+     "currency": "USD",
+     "amount": 9900,
+     "interval": "month",
+     "regularAmount": null,
+     "note": null
+    },
+    "allowances": {
+     "cpus": 8,
+     "cpuKind": "shared",
+     "memoryMb": 8192,
+     "swapMb": 0,
+     "diskGb": 10,
+     "maxDiskGb": 100,
+     "computers": 4,
+     "computerHours": 500,
+     "voiceCharacters": 180000,
+     "sleeps": false,
+     "snapshotDays": 14
+    }
+   },
+   {
+    "tier": "team",
+    "label": "Team",
+    "price": {
+     "currency": "USD",
+     "amount": 16900,
+     "interval": "month",
+     "regularAmount": null,
+     "note": null
+    },
+    "allowances": {
+     "cpus": 4,
+     "cpuKind": "shared",
+     "memoryMb": 4096,
+     "swapMb": 4096,
+     "diskGb": 10,
+     "maxDiskGb": 100,
+     "computers": 4,
+     "computerHours": 300,
+     "voiceCharacters": 180000,
+     "sleeps": false,
+     "snapshotDays": 14,
+     "seats": 5
+    },
+    "trialDays": 1
+   }
+  ],
+  "trial": {
+   "days": 1,
+   "holdDays": 3,
+   "tiers": [
+    "team"
+   ],
+   "creditUsd": 5
+  },
+  "refundDays": 14
+ },
+ "clouds": {
+  "team": {
+   "id": "team",
+   "name": "Acme",
+   "origin": "https://team.omb-test.example",
+   "port": 18830,
+   "secret": "UaJRiZvY9mvb_1pwFRMH6AsHXl_0exBhsbexT6r5nFpLS7Y0cGB4fw",
+   "teamId": "team-acme",
+   "credit": false
+  },
+  "credit": {
+   "id": "credit",
+   "name": "CreditCo",
+   "origin": "https://credit.omb-test.example",
+   "port": 18840,
+   "secret": "x5l8pjCvoNFqivFdVCNLrz6NV2QDHYNbPKDZqlQ6CHhGBRvEm35M5Q",
+   "teamId": "team-credit",
+   "credit": true
+  },
+  "home-o": {
+   "id": "home-o",
+   "name": "My Cloud",
+   "origin": "https://home-o.omb-test.example",
+   "port": 18810,
+   "secret": "wJ92wFMUGyCagVWn3hBMxnJypZXLz-RMCeCt2D-3To0gbAOw_SF4Nw",
+   "primary": true
+  }
+ },
+ "accounts": {
+  "member": {
+   "id": "acct-member",
+   "email": "dana@omb-test.example",
+   "session": {
+    "cloudContractVersion": 1,
+    "expiresAt": 1828302309417,
+    "device": {
+     "id": "898730c9-1df0-4eeb-a621-e54726cbc354"
+    },
+    "account": {
+     "id": "PrteIgoRa663P8L2l1SUMpcTBzbBTnYJ",
+     "email": "dana@omb-test.example"
+    },
+    "entitlement": {
+     "plan": "free",
+     "status": "inactive",
+     "expiresAt": null,
+     "version": 0,
+     "tier": null
+    },
+    "cloud": null,
+    "offer": {
+     "plans": [
+      {
+       "tier": "starter",
+       "label": "Starter",
+       "price": {
+        "currency": "USD",
+        "amount": 1500,
+        "interval": "month",
+        "regularAmount": null,
+        "note": null
+       },
+       "allowances": {
+        "cpus": 2,
+        "cpuKind": "shared",
+        "memoryMb": 2048,
+        "swapMb": 0,
+        "diskGb": 10,
+        "maxDiskGb": 10,
+        "computers": 1,
+        "computerHours": 10,
+        "voiceCharacters": 10000,
+        "sleeps": true,
+        "snapshotDays": 7
+       }
+      },
+      {
+       "tier": "pro",
+       "label": "Pro",
+       "price": {
+        "currency": "USD",
+        "amount": 4900,
+        "interval": "month",
+        "regularAmount": null,
+        "note": null
+       },
+       "allowances": {
+        "cpus": 1,
+        "cpuKind": "shared",
+        "memoryMb": 2048,
+        "swapMb": 0,
+        "diskGb": 10,
+        "maxDiskGb": 10,
+        "computers": 2,
+        "computerHours": 200,
+        "voiceCharacters": 60000,
+        "sleeps": false,
+        "snapshotDays": 30
+       }
+      },
+      {
+       "tier": "max",
+       "label": "Max",
+       "price": {
+        "currency": "USD",
+        "amount": 9900,
+        "interval": "month",
+        "regularAmount": null,
+        "note": null
+       },
+       "allowances": {
+        "cpus": 8,
+        "cpuKind": "shared",
+        "memoryMb": 8192,
+        "swapMb": 0,
+        "diskGb": 10,
+        "maxDiskGb": 100,
+        "computers": 4,
+        "computerHours": 500,
+        "voiceCharacters": 180000,
+        "sleeps": false,
+        "snapshotDays": 14
+       }
+      },
+      {
+       "tier": "team",
+       "label": "Team",
+       "price": {
+        "currency": "USD",
+        "amount": 16900,
+        "interval": "month",
+        "regularAmount": null,
+        "note": null
+       },
+       "allowances": {
+        "cpus": 4,
+        "cpuKind": "shared",
+        "memoryMb": 4096,
+        "swapMb": 4096,
+        "diskGb": 10,
+        "maxDiskGb": 100,
+        "computers": 4,
+        "computerHours": 300,
+        "voiceCharacters": 180000,
+        "sleeps": false,
+        "snapshotDays": 14,
+        "seats": 5
+       },
+       "trialDays": 1
+      }
+     ],
+     "recommended": "pro",
+     "trialDays": 1,
+     "holdDays": 3,
+     "creditUsd": 5,
+     "refundDays": 14
+    },
+    "teams": [
+     {
+      "id": "team-acme",
+      "name": "Acme",
+      "role": "member",
+      "machine": {
+       "appName": "team-acme",
+       "origin": "https://team.omb-test.example",
+       "state": "ready",
+       "status": "ready",
+       "pairingAvailable": true
+      }
+     }
+    ],
+    "clouds": [
+     {
+      "id": "9cc40c74-4e7a-49ec-80b7-b5dfc1a42774",
+      "name": "Acme",
+      "color": null,
+      "role": "member",
+      "tier": "team",
+      "runsOn": "cloud",
+      "status": "ready",
+      "origin": "https://team.omb-test.example",
+      "teamId": "team-acme",
+      "seats": {
+       "used": 2,
+       "limit": 5
+      },
+      "renewsAt": null,
+      "cancelAtPeriodEnd": false,
+      "primary": false
+     }
+    ],
+    "latestVersion": null
+   },
+   "clouds": [
+    "team"
+   ],
+   "role": "member",
+   "heldSession": {
+    "cloudContractVersion": 1,
+    "expiresAt": 1828388769499,
+    "device": {
+     "id": "fa4317af-7513-4d85-afda-32edba983a34"
+    },
+    "account": {
+     "id": "PrteIgoRa663P8L2l1SUMpcTBzbBTnYJ",
+     "email": "dana@omb-test.example"
+    },
+    "entitlement": {
+     "plan": "free",
+     "status": "inactive",
+     "expiresAt": null,
+     "version": 0,
+     "tier": null
+    },
+    "cloud": null,
+    "offer": {
+     "plans": [
+      {
+       "tier": "starter",
+       "label": "Starter",
+       "price": {
+        "currency": "USD",
+        "amount": 1500,
+        "interval": "month",
+        "regularAmount": null,
+        "note": null
+       },
+       "allowances": {
+        "cpus": 2,
+        "cpuKind": "shared",
+        "memoryMb": 2048,
+        "swapMb": 0,
+        "diskGb": 10,
+        "maxDiskGb": 10,
+        "computers": 1,
+        "computerHours": 10,
+        "voiceCharacters": 10000,
+        "sleeps": true,
+        "snapshotDays": 7
+       }
+      },
+      {
+       "tier": "pro",
+       "label": "Pro",
+       "price": {
+        "currency": "USD",
+        "amount": 4900,
+        "interval": "month",
+        "regularAmount": null,
+        "note": null
+       },
+       "allowances": {
+        "cpus": 1,
+        "cpuKind": "shared",
+        "memoryMb": 2048,
+        "swapMb": 0,
+        "diskGb": 10,
+        "maxDiskGb": 10,
+        "computers": 2,
+        "computerHours": 200,
+        "voiceCharacters": 60000,
+        "sleeps": false,
+        "snapshotDays": 30
+       }
+      },
+      {
+       "tier": "max",
+       "label": "Max",
+       "price": {
+        "currency": "USD",
+        "amount": 9900,
+        "interval": "month",
+        "regularAmount": null,
+        "note": null
+       },
+       "allowances": {
+        "cpus": 8,
+        "cpuKind": "shared",
+        "memoryMb": 8192,
+        "swapMb": 0,
+        "diskGb": 10,
+        "maxDiskGb": 100,
+        "computers": 4,
+        "computerHours": 500,
+        "voiceCharacters": 180000,
+        "sleeps": false,
+        "snapshotDays": 14
+       }
+      },
+      {
+       "tier": "team",
+       "label": "Team",
+       "price": {
+        "currency": "USD",
+        "amount": 16900,
+        "interval": "month",
+        "regularAmount": null,
+        "note": null
+       },
+       "allowances": {
+        "cpus": 4,
+        "cpuKind": "shared",
+        "memoryMb": 4096,
+        "swapMb": 4096,
+        "diskGb": 10,
+        "maxDiskGb": 100,
+        "computers": 4,
+        "computerHours": 300,
+        "voiceCharacters": 180000,
+        "sleeps": false,
+        "snapshotDays": 14,
+        "seats": 5
+       },
+       "trialDays": 1
+      }
+     ],
+     "recommended": "pro",
+     "trialDays": 1,
+     "holdDays": 3,
+     "creditUsd": 5,
+     "refundDays": 14
+    },
+    "teams": [
+     {
+      "id": "team-acme",
+      "name": "Acme",
+      "role": "member",
+      "machine": {
+       "appName": "team-acme",
+       "origin": "https://team.omb-test.example",
+       "state": "stopped",
+       "status": "stopped",
+       "pairingAvailable": false,
+       "hold": {
+        "until": 1794087969435
+       }
+      }
+     }
+    ],
+    "clouds": [
+     {
+      "id": "9cc40c74-4e7a-49ec-80b7-b5dfc1a42774",
+      "name": "Acme",
+      "color": null,
+      "role": "member",
+      "tier": "team",
+      "runsOn": "cloud",
+      "status": "payment_problem",
+      "origin": "https://team.omb-test.example",
+      "teamId": "team-acme",
+      "seats": {
+       "used": 2,
+       "limit": 5
+      },
+      "renewsAt": null,
+      "cancelAtPeriodEnd": false,
+      "primary": false,
+      "deleteAfter": 1794087969435
+     }
+    ],
+    "latestVersion": null
+   }
+  },
+  "ownerCode": {
+   "id": "acct-ownerCode",
+   "email": "olive@omb-test.example",
+   "session": {
+    "cloudContractVersion": 1,
+    "expiresAt": 1828302309425,
+    "device": {
+     "id": "f9337f5d-3433-48e0-af76-d03778e6c5a8"
+    },
+    "account": {
+     "id": "MfaSxt3FrvqE51Xi3tHreGg115gLZ3FD",
+     "email": "olive@omb-test.example"
+    },
+    "entitlement": {
+     "plan": "pro",
+     "status": "active",
+     "expiresAt": 1796247908995,
+     "version": 2,
+     "tier": "team"
+    },
+    "cloud": {
+     "usage": {
+      "tier": "team",
+      "resetsAt": 1796083200000,
+      "meters": [],
+      "upgrades": []
+     }
+    },
+    "teams": [
+     {
+      "id": "team-acme",
+      "name": "Acme",
+      "role": "owner",
+      "machine": {
+       "appName": "team-acme",
+       "origin": "https://team.omb-test.example",
+       "state": "ready",
+       "status": "ready",
+       "pairingAvailable": true
+      }
+     }
+    ],
+    "clouds": [
+     {
+      "id": "661586d1-dea5-4a18-904c-4ba331da4680",
+      "name": "Acme",
+      "color": null,
+      "role": "owner",
+      "tier": "team",
+      "runsOn": "cloud",
+      "status": "ready",
+      "origin": "https://team.omb-test.example",
+      "teamId": "team-acme",
+      "seats": {
+       "used": 1,
+       "limit": 5
+      },
+      "renewsAt": 1796247908995,
+      "cancelAtPeriodEnd": false,
+      "primary": true,
+      "renewal": {
+       "trial": false,
+       "endsAt": null,
+       "keptDays": 1
+      }
+     }
+    ],
+    "latestVersion": null
+   },
+   "clouds": [
+    "team"
+   ],
+   "role": "owner"
+  },
+  "ownerTrial": {
+   "id": "acct-ownerTrial",
+   "email": "tess@omb-test.example",
+   "session": {
+    "cloudContractVersion": 1,
+    "expiresAt": 1828302309419,
+    "device": {
+     "id": "431ff91c-5a36-4064-afc1-abccb07a7bb4"
+    },
+    "account": {
+     "id": "q6ovDBbElQSWzsQ5RVFsuLBVfiYXMcTp",
+     "email": "tess@omb-test.example"
+    },
+    "entitlement": {
+     "plan": "pro",
+     "status": "active",
+     "expiresAt": 1794087909326,
+     "version": 1,
+     "tier": "team"
+    },
+    "cloud": {
+     "credit": {
+      "grantedUsd": 5,
+      "remainingUsd": 5,
+      "state": "active"
+     },
+     "usage": {
+      "tier": "team",
+      "resetsAt": 1796083200000,
+      "trialEndsAt": 1793828709326,
+      "meters": [],
+      "upgrades": []
+     }
+    },
+    "teams": [
+     {
+      "id": "team-credit",
+      "name": "CreditCo",
+      "role": "owner",
+      "machine": {
+       "appName": "team-credit",
+       "origin": "https://credit.omb-test.example",
+       "state": "ready",
+       "status": "ready",
+       "pairingAvailable": true
+      }
+     }
+    ],
+    "clouds": [
+     {
+      "id": "9cc40c74-4e7a-49ec-80b7-b5dfc1a42774",
+      "name": "CreditCo",
+      "color": null,
+      "role": "owner",
+      "tier": "team",
+      "runsOn": "cloud",
+      "status": "ready",
+      "origin": "https://credit.omb-test.example",
+      "teamId": "team-credit",
+      "seats": {
+       "used": 2,
+       "limit": 5
+      },
+      "renewsAt": 1793828709326,
+      "cancelAtPeriodEnd": false,
+      "primary": true,
+      "renewal": {
+       "trial": true,
+       "endsAt": null,
+       "keptDays": 3
+      }
+     }
+    ],
+    "latestVersion": null
+   },
+   "clouds": [
+    "credit"
+   ],
+   "role": "owner"
+  },
+  "ownerBoth": {
+   "id": "acct-ownerBoth",
+   "email": "sam@omb-test.example",
+   "session": {
+    "cloudContractVersion": 1,
+    "expiresAt": 1828302309422,
+    "device": {
+     "id": "b1abf489-1fea-4a43-b57f-bc2482cdc6de"
+    },
+    "account": {
+     "id": "fihQH2rIxOGdt0LHOfFaGZFnQdbYysCW",
+     "email": "sam@omb-test.example"
+    },
+    "entitlement": {
+     "plan": "pro",
+     "status": "active",
+     "expiresAt": 1796247908907,
+     "version": 4,
+     "tier": "starter"
+    },
+    "cloud": {
+     "state": "ready",
+     "origin": "https://home-o.omb-test.example",
+     "pairingAvailable": true,
+     "disk": {
+      "gb": 10,
+      "maxGb": 10
+     },
+     "power": {
+      "state": "awake",
+      "since": 1793742308860,
+      "sleeps": true
+     },
+     "usage": {
+      "tier": "starter",
+      "resetsAt": 1796083200000,
+      "meters": [],
+      "upgrades": [
+       {
+        "tier": "pro",
+        "amount": 4900
+       },
+       {
+        "tier": "max",
+        "amount": 9900
+       }
+      ]
+     }
+    },
+    "teams": [
+     {
+      "id": "team-acme",
+      "name": "Acme",
+      "role": "owner",
+      "machine": {
+       "appName": "team-acme",
+       "origin": "https://team.omb-test.example",
+       "state": "ready",
+       "status": "ready",
+       "pairingAvailable": true
+      }
+     }
+    ],
+    "clouds": [
+     {
+      "id": "c51582b4-ee50-407d-8969-570725430e63",
+      "name": "My Cloud",
+      "color": null,
+      "role": "owner",
+      "tier": "starter",
+      "runsOn": "cloud",
+      "status": "ready",
+      "origin": "https://home-o.omb-test.example",
+      "teamId": null,
+      "seats": null,
+      "renewsAt": 1796247908852,
+      "cancelAtPeriodEnd": false,
+      "primary": true,
+      "renewal": {
+       "trial": false,
+       "endsAt": null,
+       "keptDays": 1
+      },
+      "upgrades": [
+       {
+        "tier": "pro",
+        "amount": 4900
+       },
+       {
+        "tier": "max",
+        "amount": 9900
+       }
+      ],
+      "power": {
+       "state": "awake",
+       "since": 1793742308860,
+       "sleeps": true
+      }
+     },
+     {
+      "id": "283718ee-ab0e-4596-9799-bb3315dc3fe8",
+      "name": "Acme",
+      "color": "blue",
+      "role": "owner",
+      "tier": "team",
+      "runsOn": "cloud",
+      "status": "ready",
+      "origin": "https://team.omb-test.example",
+      "teamId": "team-acme",
+      "seats": {
+       "used": 1,
+       "limit": 5
+      },
+      "renewsAt": 1796247908907,
+      "cancelAtPeriodEnd": false,
+      "primary": false,
+      "renewal": {
+       "trial": false,
+       "endsAt": null,
+       "keptDays": 1
+      }
+     }
+    ],
+    "latestVersion": null
+   },
+   "clouds": [
+    "home-o",
+    "team"
+   ],
+   "role": "owner"
+  },
+  "stranger": {
+   "id": "acct-stranger",
+   "email": "stranger@omb-test.example",
+   "session": {
+    "cloudContractVersion": 1,
+    "expiresAt": 1828302309422,
+    "device": {
+     "id": "e7ff1a05-1aaa-4ad9-a94b-8c961354c40d"
+    },
+    "account": {
+     "id": "tRdRlRpa5yDD14PRZhwJFUKiNhr9FfFd",
+     "email": "stranger@omb-test.example"
+    },
+    "entitlement": {
+     "plan": "free",
+     "status": "inactive",
+     "expiresAt": null,
+     "version": 0,
+     "tier": null
+    },
+    "cloud": null,
+    "offer": {
+     "plans": [
+      {
+       "tier": "starter",
+       "label": "Starter",
+       "price": {
+        "currency": "USD",
+        "amount": 1500,
+        "interval": "month",
+        "regularAmount": null,
+        "note": null
+       },
+       "allowances": {
+        "cpus": 2,
+        "cpuKind": "shared",
+        "memoryMb": 2048,
+        "swapMb": 0,
+        "diskGb": 10,
+        "maxDiskGb": 10,
+        "computers": 1,
+        "computerHours": 10,
+        "voiceCharacters": 10000,
+        "sleeps": true,
+        "snapshotDays": 7
+       }
+      },
+      {
+       "tier": "pro",
+       "label": "Pro",
+       "price": {
+        "currency": "USD",
+        "amount": 4900,
+        "interval": "month",
+        "regularAmount": null,
+        "note": null
+       },
+       "allowances": {
+        "cpus": 1,
+        "cpuKind": "shared",
+        "memoryMb": 2048,
+        "swapMb": 0,
+        "diskGb": 10,
+        "maxDiskGb": 10,
+        "computers": 2,
+        "computerHours": 200,
+        "voiceCharacters": 60000,
+        "sleeps": false,
+        "snapshotDays": 30
+       }
+      },
+      {
+       "tier": "max",
+       "label": "Max",
+       "price": {
+        "currency": "USD",
+        "amount": 9900,
+        "interval": "month",
+        "regularAmount": null,
+        "note": null
+       },
+       "allowances": {
+        "cpus": 8,
+        "cpuKind": "shared",
+        "memoryMb": 8192,
+        "swapMb": 0,
+        "diskGb": 10,
+        "maxDiskGb": 100,
+        "computers": 4,
+        "computerHours": 500,
+        "voiceCharacters": 180000,
+        "sleeps": false,
+        "snapshotDays": 14
+       }
+      },
+      {
+       "tier": "team",
+       "label": "Team",
+       "price": {
+        "currency": "USD",
+        "amount": 16900,
+        "interval": "month",
+        "regularAmount": null,
+        "note": null
+       },
+       "allowances": {
+        "cpus": 4,
+        "cpuKind": "shared",
+        "memoryMb": 4096,
+        "swapMb": 4096,
+        "diskGb": 10,
+        "maxDiskGb": 100,
+        "computers": 4,
+        "computerHours": 300,
+        "voiceCharacters": 180000,
+        "sleeps": false,
+        "snapshotDays": 14,
+        "seats": 5
+       },
+       "trialDays": 1
+      }
+     ],
+     "recommended": "pro",
+     "trialDays": 1,
+     "holdDays": 3,
+     "creditUsd": 5,
+     "refundDays": 14
+    },
+    "clouds": [],
+    "latestVersion": null
+   },
+   "clouds": [],
+   "role": null
+  }
+ }
+}
