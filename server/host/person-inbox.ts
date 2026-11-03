@@ -89,6 +89,8 @@ export interface Delivery {
 }
 
 export interface PersonInboxDeps {
+  /** Security invariant: an inbox is a person's own chat with their Chief at its own level, so what a confined conversation says never lands there. */
+  confined?(threadId: string): boolean;
   team: CloudTeam | null;
   dataDir: string;
   store: Pick<Store, "bots" | "bot" | "tasks" | "taskByThread" | "createTask" | "patchTask" | "patchGroup" | "appendMessage" | "patchMessage" | "messagesFor" | "groupByThread" | "onChange">;
@@ -374,7 +376,7 @@ export function createPersonInbox(deps: PersonInboxDeps) {
    * comes from there. Anything else, and an ask in the person's own chat where they are, goes out as it is. */
   function route(notification: Notification, how: { routine?: boolean } = {}): Notification | null {
     const result = notification.kind === "done" && how.routine === true;
-    if (!team || notification.forPerson || (!ASK_NOTIFICATIONS.has(notification.kind) && !result)) return notification;
+    if (!team || notification.forPerson || (!ASK_NOTIFICATIONS.has(notification.kind) && !result) || deps.confined?.(notification.threadId)) return notification;
     const person = deps.askedPerson(notification.botId, notification.threadId);
     if (!person || personOf(notification.threadId)) return notification;
     const own = audienceMember(deps.audienceOf(notification.threadId)) === person;
