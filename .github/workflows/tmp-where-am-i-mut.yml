@@ -1,0 +1,37 @@
+name: tmp where am i mutations
+on:
+  push:
+    branches: [tmp/where-am-i-mutations]
+permissions:
+  contents: read
+concurrency:
+  group: tmp-where-am-i-mut
+  cancel-in-progress: true
+jobs:
+  mutations:
+    runs-on: ubuntu-latest
+    timeout-minutes: 70
+    env:
+      MUTATE_ROOT: ${{ github.workspace }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile --ignore-scripts
+      - name: Break each behaviour, and see a test fail
+        run: |
+          mkdir -p "$RUNNER_TEMP/mut"
+          cp .github/tmp-where-am-i/mutate.py "$RUNNER_TEMP/mutate.py"
+          python3 "$RUNNER_TEMP/mutate.py" 2>&1 | tee "$RUNNER_TEMP/mut/mutations.log"; exit ${PIPESTATUS[0]}
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: mutations
+          path: ${{ runner.temp }}/mut
+          retention-days: 3
