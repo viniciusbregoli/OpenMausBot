@@ -36,7 +36,7 @@ jobs:
     env:
       APP_DIR: ${{ github.workspace }}/app-under-test
       OUT: ${{ github.workspace }}/out
-      MAIN_HEAD: bf398d11d
+      MAIN_HEAD: 455853a06
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -57,7 +57,7 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: built-app.tgz
-          key: rail-run-app-bf398d11d-arm64-1
+          key: rail-run-app-455853a06-arm64-1
       - name: Build the app from main
         if: steps.built.outputs.cache-hit != 'true'
         env:
@@ -75,7 +75,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: built-app.tgz
-          key: rail-run-app-bf398d11d-arm64-1
+          key: rail-run-app-455853a06-arm64-1
       - name: Unpack
         run: |
           tar -xzf built-app.tgz -C "$APP_DIR"
