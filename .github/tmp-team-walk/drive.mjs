@@ -107,6 +107,8 @@ const escape = () => within(main, async (page) => { await page.send("Input.dispa
 const settingsOpen = () => within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog]')].some((el) => /Usage & billing|General/.test(el.innerText || ""))`));
 const openSettings = async () => { let rows = []; for (let i = 0; i < 4; i++) { rows = await openYou().catch(() => rows); await delay(350); await click(/^Settings$/).catch(() => {}); await delay(1200); if (await settingsOpen()) return rows; await escape(); await delay(600); } throw new Error("Settings would not open"); };
 const typeInto = (selector, text) => within(main, async (page) => { await page.eval(`document.querySelector(${JSON.stringify(selector)})?.focus()`); await page.send("Input.insertText", { text }); await delay(200); });
+const sendNow = async () => { await delay(300); const sent = await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("[data-composer-actions] button")].filter((el) => el.getClientRects().length).at(-1)`)); await delay(300); return sent; };
+const openPlace = async (name) => { const fromSheet = await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("[data-cloud-add-dialog] button")].find((el) => (el.innerText || "").trim() === ${JSON.stringify(`Open ${name}`)})`)); if (!fromSheet) { await escape(); await escape(); await delay(400); await clickTile(name); } await delay(7000); await until(async () => (await targets()).some((t) => isMain(t) && t.url.includes("omb-test.example")), `${name}'s page`, 30_000).catch(() => {}); await delay(1500); };
 const enter = () => within(main, async (page) => { for (const type of ["keyDown", "keyUp"]) await page.send("Input.dispatchKeyEvent", { type, key: "Enter", code: "Enter", windowsVirtualKeyCode: 13, text: type === "keyDown" ? "\r" : undefined }); });
 const dialogsOpen = () => within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog],[role=alertdialog]')].map((el) => (el.innerText || "").slice(0, 200))`));
 /** Whatever popped up by itself: seen first (it is part of what a person sees), then closed the way a person would close it. */
@@ -205,7 +207,7 @@ if (STAGE.has("member")) await step("the invited person signs in", async () => {
   await shot("member-4-team-no-bots-shared");
   note("member's bots with nothing shared", true, await within(main, (page) => page.eval(`[...document.querySelectorAll("[data-sidebar-bot-row]")].map((el) => el.innerText.slice(0, 60))`)));
   // Says something to their own MausBot with no AI on the Team Cloud.
-  await typeInto("textarea", "Hi, what can you do for me?"); await enter(); await delay(6000); await shot("member-5-first-message-no-ai");
+  await typeInto("textarea", "Hi, what can you do for me?"); await sendNow(); await delay(7000); await shot("member-5-first-message-no-ai");
   const you = await openYou(); note("member on the team: You menu", true, you); await shot("member-6-you-menu-on-team"); await escape();
   await openSettings(); await shot("member-7-settings-on-team"); note("member settings says", true, await within(main, (page) => page.eval(`document.querySelector('[role=dialog]')?.innerText?.slice(0, 1200) ?? ""`))); await escape(); await escape();
 });
@@ -226,10 +228,11 @@ if (STAGE.has("levels")) await step("the owner shares bots at each level", async
     await shot(`levels-2-${name.toLowerCase()}`);
     note(`level: ${name}`, true, await within(main, (page) => page.eval(`({ composer: Boolean(document.querySelector("textarea")), banner: [...document.querySelectorAll("main,[role=main]")].map((el) => el.innerText.slice(-260)) })`)));
   }
+  await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("[data-sidebar-bot-row]")].find((el) => el.innerText.startsWith("Finance"))`, { button: "right" })); await delay(600); note("a member's bot menu", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('[role^="menuitem"],[data-bot-menu] button')].map((el) => (el.textContent || "").trim())`))); await shot("levels-2b-member-bot-menu"); await click(/^View threads$/); await delay(1200); await shot("levels-2c-view-threads"); note("View threads shows", true, await within(main, (page) => page.eval(`document.body.innerText.slice(0, 900)`))); await escape(); await escape(); await delay(500);
   await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("[data-sidebar-bot-row]")].find((el) => el.innerText.startsWith("Scout"))`)); await delay(1200);
   await typeInto("textarea", "@"); await delay(1200); await shot("levels-3-at-list");
   note("@ list", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('[role=listbox] [role=option],[data-mention-option],[role=option]')].map((el) => el.innerText.replace(/\\n/g, " · "))`)));
-  await within(main, (page) => page.eval(`document.querySelector("textarea")?.select?.()`)); await within(main, (page) => page.send("Input.insertText", { text: "Hello team" })); await delay(300); await enter(); await delay(3500); await shot("levels-4-shared-chat-message");
+  await within(main, (page) => page.eval(`document.querySelector("textarea")?.select?.()`)); await within(main, (page) => page.send("Input.insertText", { text: "Hello team" })); await delay(300); await sendNow(); await delay(4000); await shot("levels-4-shared-chat-message");
   const plus = await within(main, (page) => clickExpr(page, `document.querySelector('[aria-label="New conversation"],[aria-label*="New conversation"]')`)); note("New conversation button", Boolean(plus)); await delay(1500); await shot("levels-5-private-chat");
 });
 // ---------------------------------------------------------------- the invited address is not the one signed in
@@ -244,10 +247,11 @@ if (STAGE.has("ownercode")) await step("owner of a Team with no credit and no AI
   await fresh({ name: "Olive Owner", email: EMAIL.ownerCode }); await popups("ownercode");
   await signInBySheet(EMAIL.ownerCode); await shot("code-1-just-signed-in"); note("owner sheet", true, await within(main, (page) => page.eval(`document.querySelector('[data-cloud-add-dialog]')?.innerText ?? "(no sheet)"`)));
   note("owner: the rail", true, await railPlaces()); note("owner: where the window is", true, (await targets()).filter(isMain).map((t) => t.url));
-  const open = await click(/^Open Acme$/); note("sheet's Open Acme", Boolean(open)); if (!open) { await escape(); await escape(); await clickTile("Acme"); } await delay(7000);
-  await shot("code-2-team-first-open"); await popups("code"); await shot("code-3-team-after-popups");
+  await openPlace("Acme");
+  await shot("code-2-team-first-open"); note("owner: the window after Open Acme", true, (await targets()).filter(isMain).map((t) => t.url)); await popups("code"); await shot("code-3-team-after-popups");
   note("owner on the team, no AI: screen says", true, await within(main, (page) => page.eval(`document.body.innerText.slice(0, 900)`)));
-  await within(main, (page) => clickExpr(page, byText(/^Use an API key/))); await delay(1200); await shot("code-4-api-key");  await escape();
+  for (let i = 0; i < 3; i++) { const moved = await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("button")].filter((el) => el.getClientRects().length).find((el) => /^(Continue)$/.test((el.innerText || "").trim()))`)); if (!moved) break; await delay(1500); await shot(`code-3b-setup-step-${i}`); note(`owner setup step ${i}`, true, await within(main, (page) => page.eval(`document.body.innerText.slice(0, 700)`))); }
+  await within(main, (page) => clickExpr(page, byText(/^Use an API key/))); await delay(1200); await shot("code-4-api-key"); await escape();
   const you = await openYou(); note("owner on the team: You menu", true, you); await escape();
   await openSettings(); await shot("code-5-settings"); await click(/^People$/).catch(() => {}); await delay(800); await shot("code-6-settings-people"); await escape(); await escape();
 });
@@ -256,31 +260,31 @@ if (STAGE.has("ownercode")) await step("owner of a Team with no credit and no AI
 if (STAGE.has("studiosui")) await step("the owner sets up two studios by hand", async () => {
   await fresh({ name: "Olive Owner", email: EMAIL.ownerCode }); await popups("studios");
   await signInBySheet(EMAIL.ownerCode); await delay(1000);
-  const open = await click(/^Open Acme$/); if (!open) { await escape(); await escape(); await clickTile("Acme"); } await delay(7000); await popups("studios-team");
+  await openPlace("Acme"); await popups("studios-team");
   const menu = () => within(main, (page) => page.eval(`[...document.querySelectorAll('[role^="menuitem"],[data-bot-menu] button')].filter((el) => el.getClientRects().length).map((el) => (el.innerText || el.getAttribute("aria-label") || "").trim())`));
   const dialogText = () => within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog],[role=alertdialog]')].map((el) => el.innerText)`));
   const rowOf = (name) => `[...document.querySelectorAll("[data-sidebar-bot-row]")].find((el) => el.innerText.startsWith(${JSON.stringify(name)}))`;
-  const newBot = async (name) => {
-    await within(main, (page) => clickExpr(page, `document.querySelector('[aria-label="New or share"],[aria-label="New"]')`)); await delay(600);
-    return { rows: await menu(), go: async () => {
-      await click(/^New bot$/); await delay(1500);
-      await within(main, async (page) => { await page.eval(`(() => { const el = [...document.querySelectorAll('[role=dialog] input, [data-new-bot-dialog] input')].find((x) => !x.type || x.type === "text"); el?.focus(); el?.select?.(); })()`); await page.send("Input.insertText", { text: name }); }); await delay(400);
-    } };
+  const plus = async () => { await within(main, (page) => clickExpr(page, `document.querySelector('[aria-label="New or share"],[aria-label="New"]')`)); await delay(600); };
+  const rowsNow = () => within(main, (page) => page.eval(`[...document.querySelectorAll("[data-sidebar-bot-row]")].map((el) => el.innerText.split("\\n")[0])`));
+  await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("button")].filter((el) => el.getClientRects().length).find((el) => /^Skip setup$/.test((el.innerText || "").trim()))`)); await delay(1500);
+  await plus(); note("the + menu in Simple", true, await menu()); await shot("studios-1-plus-menu-simple");
+  const makeBot = async (name, department) => {
+    const before = await rowsNow(); await plus(); await click(/^New bot$/); await delay(2500); await shot(`studios-2-new-bot-${name}`); note(`New bot (${name}): dialogs`, true, await dialogText());
+    const dialogInput = await within(main, (page) => page.eval(`Boolean(document.querySelector('[role=dialog] input'))`));
+    if (dialogInput) { note("the New bot dialog's department choices", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog] select')].map((el) => [...el.options].map((o) => o.text))`))); await within(main, async (page) => { await page.eval(`(() => { const el = document.querySelector('[role=dialog] input'); el.focus(); el.select?.(); })()`); await page.send("Input.insertText", { text: name }); }); await delay(300); await click(/^Create bot$/); await delay(2500); }
+    const after = await rowsNow(); const made = after.find((row) => !before.includes(row)) ?? after[0]; note(`the bot appeared as`, true, { made, after });
+    await within(main, (page) => clickExpr(page, rowOf(made), { button: "right" })); await delay(700); note("bot menu in Simple", true, await menu()); await shot(`studios-3-bot-menu-${name}`);
+    await click(/^Rename$/); await delay(800); await shot(`studios-3b-rename-${name}`); await within(main, async (page) => { await page.eval(`(() => { const el = document.activeElement; el?.select?.(); })()`); await page.send("Input.insertText", { text: name }); }); await delay(200); await enter(); await delay(1200);
+    await within(main, (page) => clickExpr(page, rowOf(name), { button: "right" })); await delay(700); await click(/^Move to department$/); await delay(700); note(`Move to department flyout (${name})`, true, await menu()); await shot(`studios-4-move-to-department-${name}`);
+    const existing = await click(new RegExp(`^${department}$`));
+    if (!existing) { await click(/^New department…$/); await delay(700); await shot(`studios-5-new-department-field-${name}`); await within(main, async (page) => { await page.eval(`(() => { const el = document.querySelector('input[aria-label="New department name"]') || document.activeElement; el?.focus(); })()`); await page.send("Input.insertText", { text: department }); }); await delay(200); await enter(); }
+    await delay(1500); await shot(`studios-6-in-department-${name}`);
   };
-  const first = await newBot("Bookkeeping"); note("the + menu in Simple", true, first.rows); await shot("studios-1-plus-menu-simple"); await first.go(); await shot("studios-2-new-bot-dialog");
-  note("New bot dialog says", true, await dialogText());
-  note("the Department dropdown's choices with no department yet", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog] select')].map((el) => [...el.options].map((o) => o.text))`)));
-  await click(/^Create bot$/); await delay(3500); await shot("studios-3-bot-made"); await popups("studios-bot");
-  await within(main, (page) => clickExpr(page, rowOf("Bookkeeping"), { button: "right" })); await delay(700); note("bot menu in Simple", true, await menu()); await shot("studios-4-bot-menu");
-  await click(/^Move to department$/); await delay(700); note("Move to department flyout", true, await menu()); await shot("studios-5-move-to-department");
-  await click(/^New department…$/); await delay(700); await shot("studios-6-new-department-field");
-  await within(main, async (page) => { await page.eval(`(() => { const el = document.querySelector('input[aria-label="New department name"]') || document.activeElement; el?.focus(); })()`); await page.send("Input.insertText", { text: "Studio A" }); }); await delay(200); await enter(); await delay(1500); await shot("studios-7-department-made");
-  const second = await newBot("Rooms"); await second.go(); note("the Department dropdown now", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog] select')].map((el) => [...el.options].map((o) => o.text))`))); await shot("studios-8-second-bot"); await click(/^Create bot$/); await delay(3000); await popups("studios-bot2");
-  await within(main, (page) => clickExpr(page, rowOf("Rooms"), { button: "right" })); await delay(600); await click(/^Move to department$/); await delay(600); await click(/^New department…$/); await delay(600);
-  await within(main, async (page) => { await page.eval(`(() => { const el = document.querySelector('input[aria-label="New department name"]') || document.activeElement; el?.focus(); })()`); await page.send("Input.insertText", { text: "Studio B" }); }); await delay(200); await enter(); await delay(1500); await shot("studios-9-two-departments");
+  await makeBot("Bookkeeping", "Studio A");
+  await makeBot("Rooms", "Studio B");
   await openYou(); await delay(300); await click(/^Team map$/); await delay(1800); await shot("studios-9b-team-map"); await within(main, (page) => clickExpr(page, `document.querySelector('summary[aria-label]')`)); await delay(500); await shot("studios-9c-team-map-add"); note("Team map's add menu", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('details[open] button')].map((el) => (el.innerText || "").trim())`))); await escape(); await within(main, (page) => clickExpr(page, rowOf("Bookkeeping"))); await delay(1200);
   // Sharing Bookkeeping: only the owner.
-  const share = async (name) => { await within(main, (page) => clickExpr(page, rowOf(name))); await delay(1500); const pressed = await within(main, (page) => clickExpr(page, `document.querySelector('[aria-label="Share"]') || ${byText(/^Share$/)}`)); note(`Share button beside ${name}`, Boolean(pressed)); await delay(1000); return pressed; };
+  const share = async (name) => { await within(main, (page) => clickExpr(page, rowOf(name))); await delay(1500); let pressed = await within(main, (page) => clickExpr(page, `document.querySelector('[data-share-bot-button]')`)); if (!pressed) { await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("main button, [role=main] button, header button")].filter((el) => el.getClientRects().length).find((el) => (el.innerText || "").includes(${JSON.stringify(name)}))`)); await delay(1200); await shot(`studios-9d-bot-panel-${name}`); pressed = await within(main, (page) => clickExpr(page, `document.querySelector('[data-share-bot-button]')`)); } note(`Share button beside ${name}`, Boolean(pressed)); await delay(1000); return pressed; };
   await share("Bookkeeping"); await shot("studios-10-share-dialog"); note("Share dialog says", true, await dialogText());
   const general = await within(main, (page) => clickExpr(page, `[...document.querySelectorAll('[role=dialog] button,[role=dialog] select,[role=dialog] [role=combobox]')].find((el) => /can use it|General access/.test(el.innerText || el.getAttribute("aria-label") || ""))`)); await delay(500); await shot("studios-11-general-access-open"); note("general access control", Boolean(general), await menu());
   await within(main, (page) => clickExpr(page, `[...document.querySelectorAll('[role^="menuitem"],[role=option],[role=dialog] button')].find((el) => /^Only people added/.test((el.innerText || "").trim()))`)); await delay(1200); await shot("studios-12-only-people-added"); note("after Only people added", true, await dialogText());
@@ -288,10 +292,10 @@ if (STAGE.has("studiosui")) await step("the owner sets up two studios by hand", 
   // Sharing Rooms with a member who has accepted the invitation but never opened the app.
   await share("Rooms"); await within(main, (page) => clickExpr(page, `[...document.querySelectorAll('[role=dialog] button,[role=dialog] select,[role=dialog] [role=combobox]')].find((el) => /can use it|General access/.test(el.innerText || el.getAttribute("aria-label") || ""))`)); await delay(400); await within(main, (page) => clickExpr(page, `[...document.querySelectorAll('[role^="menuitem"],[role=option],[role=dialog] button')].find((el) => /^Only people added/.test((el.innerText || "").trim()))`)); await delay(800);
   await typeInto('[role=dialog] input', "dana2"); await delay(1000); await shot("studios-13-add-person-who-never-opened-the-app"); note("adding someone who joined but has not opened the team", true, await dialogText());
-  await within(main, async (page) => { await page.eval(`(() => { const el = document.querySelector('[role=dialog] input'); el.select?.(); })()`); await page.send("Input.insertText", { text: "dana" }); }); await delay(1000); await shot("studios-14-add-person-who-opened"); note("adding someone who has opened the team", true, await dialogText());
+  await within(main, async (page) => { await page.eval(`(() => { const el = document.querySelector('[role=dialog] input'); el?.focus(); el?.select?.(); })()`); await page.send("Input.insertText", { text: "dana" }); }); await delay(1000); await shot("studios-14-add-person-who-opened"); note("adding someone who has opened the team", true, await dialogText());
   await within(main, (page) => clickExpr(page, `[...document.querySelectorAll('[role=dialog] [role=option],[role=dialog] button')].find((el) => /dana/i.test(el.innerText || ""))`)); await delay(1000); await shot("studios-15-added"); await escape(); await delay(500); await escape();
   // A routine by hand.
-  await openYou(); await click(/^Automations$/); await delay(1800); await shot("studios-16-automations"); note("Automations page says", true, await within(main, (page) => page.eval(`document.body.innerText.slice(0, 700)`)));
+  await escape(); await delay(400); await openYou(); await delay(300); await click(/^Automations$/); await delay(1800); await shot("studios-16-automations"); note("Automations page says", true, await within(main, (page) => page.eval(`document.body.innerText.slice(0, 700)`)));
   const made = await click(/^New$/); note("New on Automations", Boolean(made)); await delay(900); await shot("studios-17-new-automation"); note("New automation says", true, await dialogText());
   note("Who should do it choices", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog] select')].map((el) => [...el.options].map((o) => o.text))`)));
   await click(/^Set it up yourself$/); await delay(900); await shot("studios-18-yourself"); note("Set it up yourself says", true, await dialogText());
@@ -308,16 +312,16 @@ if (STAGE.has("studiosui")) await step("the owner sets up two studios by hand", 
 if (STAGE.has("ownertrial")) await step("owner on the trial: the credit", async () => {
   await fresh({ name: "Tess Trial", email: EMAIL.ownerTrial }); await popups("ownertrial");
   await signInBySheet(EMAIL.ownerTrial); await delay(1000); await shot("credit-1-just-signed-in");
-  const open = await click(/^Open CreditCo$/); if (!open) { await escape(); await escape(); await clickTile("CreditCo"); } await delay(7000);
+  await openPlace("CreditCo");
   await shot("credit-2-team-first-open"); await popups("credit"); await shot("credit-3-after-popups");
-  await typeInto("textarea", "Say hello"); await enter(); await delay(8000); await shot("credit-4-reply");
+  await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("button")].filter((el) => el.getClientRects().length).find((el) => /^Skip setup$/.test((el.innerText || "").trim()))`)); await delay(1500); await shot("credit-3b-skipped-setup"); await typeInto("textarea", "Say hello"); await sendNow(); await delay(9000); await shot("credit-4-reply");
   const owner = await tokenFor(CLOUD.credit, EMAIL.ownerTrial, "owner");
   const providers = await api(CLOUD.credit, owner, "GET", "/api/bots"); note("credit team bots' models", true, (providers.body?.bots ?? []).map((bot) => ({ name: bot.name, model: bot.modelSelection })));
   note("relay calls seen", true, adminLog().filter((row) => row.path?.includes("/services/ai/")).slice(-6).map((row) => row.path));
   // A member's turn on the credit too.
   const member = await tokenFor(CLOUD.credit, "dana-credit@omb-test.example", "member");
   const bots = await api(CLOUD.credit, member, "GET", "/api/bots"); note("a member's copy of the bots on the credit team", true, (bots.body?.bots ?? []).map((bot) => ({ name: bot.name, yourAccess: bot.yourAccess, model: bot.modelSelection })));
-  control({ creditGone: true }); await typeInto("textarea", "One more"); await enter(); await delay(8000); await shot("credit-5-used-up"); control({});
+  control({ creditGone: true }); await typeInto("textarea", "One more"); await sendNow(); await delay(9000); await shot("credit-5-used-up"); control({});
 });
 // ---------------------------------------------------------------- owner with a My Cloud: Move to
 if (STAGE.has("move")) await step("owner with a My Cloud moves a bot in", async () => {
