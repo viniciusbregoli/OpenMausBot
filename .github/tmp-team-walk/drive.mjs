@@ -312,6 +312,25 @@ if (STAGE.has("studiosui")) await step("the owner sets up two studios by hand", 
   await click(/^Bot access$/).catch(() => {}); await delay(900); await shot("studios-22-bot-access"); await escape(); await escape();
   await within(main, (page) => page.eval(`localStorage.setItem("omb-advanced-mode", "0"); location.reload()`)).catch(() => {}); await delay(3000);
 });
+
+if (STAGE.has("renamecheck")) await step("Rename on the second new bot", async () => {
+  await fresh({ name: "Tess Trial", email: EMAIL.ownerTrial }); await popups("rename");
+  await signInBySheet(EMAIL.ownerTrial); await delay(1000);
+  await openPlace("CreditCo"); await popups("rename-team");
+  await within(main, (page) => clickExpr(page, `[...document.querySelectorAll("button")].filter((el) => el.getClientRects().length).find((el) => /^Skip setup$/.test((el.innerText || "").trim()))`)); await delay(1500); await popups("rename-team2");
+  const rowsNow = () => within(main, (page) => page.eval(`[...document.querySelectorAll("[data-sidebar-bot-row]")].map((el) => el.innerText.split("\\n")[0])`));
+  const plus = async () => { await within(main, (page) => clickExpr(page, `document.querySelector('[aria-label="New or share"],[aria-label="New"]')`)); await delay(600); };
+  const make = async () => { const before = await rowsNow(); await plus(); await click(/^New bot$/); await delay(3000); const after = await rowsNow(); return after.find((row) => !before.includes(row)); };
+  const rowOf = (name) => `[...document.querySelectorAll("[data-sidebar-bot-row]")].find((el) => el.innerText.startsWith(${JSON.stringify(name)}))`;
+  const editing = () => within(main, (page) => page.eval(`(() => { const el = document.activeElement; return { tag: el?.tagName, value: el?.value ?? null, row: el?.closest("[data-sidebar-bot-row]")?.getAttribute("data-sidebar-bot-row") ?? null, inputs: [...document.querySelectorAll("[data-sidebar-bot-row] input")].map((i) => i.value) }; })()`));
+  const rename = async (name, to, label) => { await within(main, (page) => clickExpr(page, rowOf(name), { button: "right" })); await delay(700); await shot(`rename-${label}-menu`); await click(/^Rename$/); await delay(800); await shot(`rename-${label}-field`); const seen = await editing(); note(`Rename on ${name} (${label}): what is being edited`, (seen.inputs ?? []).includes(name), seen); await within(main, async (page) => { await page.eval(`document.activeElement?.select?.()`); await page.send("Input.insertText", { text: to }); }); await delay(200); await enter(); await delay(1200); note(`after renaming ${name} to ${to}`, true, await rowsNow()); };
+  const first = await make(); note("first new bot", true, first); await rename(first, "Alpha", "first");
+  const second = await make(); note("second new bot, first not moved", true, second); await rename(second, "Bravo", "second-no-move");
+  await within(main, (page) => clickExpr(page, rowOf("Alpha"), { button: "right" })); await delay(700); await click(/^Move to department$/); await delay(700); await click(/^New department…$/); await delay(700); await within(main, async (page) => { await page.eval(`(() => { const el = document.querySelector('input[aria-label="New department name"]') || document.activeElement; el?.focus(); })()`); await page.send("Input.insertText", { text: "Studio A" }); }); await delay(200); await enter(); await delay(1500); await shot("rename-after-move");
+  const third = await make(); note("third new bot, after moving Alpha", true, second); await rename(third, "Charlie", "third-after-move");
+  await shot("rename-final"); note("final list", true, await rowsNow());
+  await openYou(); await delay(300); await click(/^Team map$/); await delay(1600); await within(main, (page) => clickExpr(page, `document.querySelector('summary[aria-label]')`)); await delay(400); await click(/^Create department$/); await delay(900); await shot("rename-team-map-create-department"); note("Team map's Create department dialog", true, await within(main, (page) => page.eval(`[...document.querySelectorAll('[role=dialog]')].map((el) => el.innerText)`)));
+});
 // ---------------------------------------------------------------- owner on a trial: the credit runs the bots
 if (STAGE.has("ownertrial")) await step("owner on the trial: the credit", async () => {
   await fresh({ name: "Tess Trial", email: EMAIL.ownerTrial }); await popups("ownertrial");

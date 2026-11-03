@@ -62,7 +62,7 @@ jobs:
       - name: Walk the real app
         timeout-minutes: 45
         env:
-          STAGES: trialbutton,member,studiosui
+          STAGES: renamecheck
         run: cp .github/tmp-team-walk/drive.mjs "$RUNNER_TEMP/fx/drive.mjs"; node "$RUNNER_TEMP/fx/drive.mjs" 2>&1 | tee "$OUT/drive.log"; exit ${PIPESTATUS[0]}
         shell: bash
       - name: Collect logs
