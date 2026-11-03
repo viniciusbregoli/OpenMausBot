@@ -19,7 +19,7 @@ const until = async (done: () => Promise<boolean> | boolean, ms = 60_000) => { c
 const script = (calls: unknown[] | null) => { const file = join(team.home, "tool-calls.json"); if (calls) writeFileSync(file, JSON.stringify(calls)); else rmSync(file, { force: true }); };
 const dump = () => { try { return JSON.parse(readFileSync(join(team.home, "dump.json"), "utf8")) as { systemPrompt: string; prompt: unknown }; } catch { return null; } };
 const bots = async (token: string) => (await team.as(token, "GET", "/api/bots")).body.bots as Bot[];
-const idle = async () => (await bots(owner)).every((bot) => !(bot as { busy?: boolean }).busy && !(bot as { activity?: string }).activity);
+const idle = async () => (await bots(owner)).every((bot) => !(bot as { busy?: boolean }).busy && (bot as { activity?: string }).activity !== "working");
 const rows = async (token: string, threadId: string) => ((await team.as(token, "GET", `/api/threads/${threadId}/messages?limit=200`)).body.messages ?? []) as Array<{ id: string; kind: string; text?: string; tool?: { name: string; ok?: boolean; output?: string }; sender?: unknown }>;
 const toolRows = async (token: string, threadId: string) => (await rows(token, threadId)).filter((row) => row.kind === "activity" && row.tool).map((row) => ({ name: row.tool!.name, ok: row.tool!.ok, output: row.tool!.output?.slice(0, 900) }));
 const say = async (token: string, botId: string, threadId: string, text: string, calls: unknown[] | null) => {
@@ -37,12 +37,15 @@ const routineRun = async (token: string, botId: string, name: string, calls: unk
   if (made.status !== 201) return { madeStatus: made.status, made: made.body };
   script(calls); rmSync(join(team.home, "dump.json"), { force: true });
   const ran = await team.as(token, "POST", `/api/routines/${made.body.routine.id}/run`);
-  await until(async () => existsSync(join(team.home, "dump.json")) && await idle(), 60_000);
-  await sleep(800);
-  const runs = await team.as(token, "GET", `/api/routines/${made.body.routine.id}/runs`);
-  const run = (runs.body.runs ?? [])[0] ?? ran.body.run ?? null;
-  const threadId = run?.threadId ?? ran.body.threadId ?? made.body.routine.threadId;
-  return { routine: made.body.routine.id, runStatus: ran.status, ran: JSON.stringify(ran.body).slice(0, 300), threadId, tools: threadId ? await toolRows(token, threadId) : null, reply: threadId ? (await rows(token, threadId)).at(-1)?.text?.slice(0, 300) : null, dumped: dump()?.systemPrompt?.length ?? null };
+  const runId = ran.body.run?.id;
+  let run: Record<string, unknown> | undefined;
+  await until(async () => {
+    run = ((await team.as(token, "GET", "/api/routines")).body.runs as Array<Record<string, unknown>> | undefined)?.find((candidate) => candidate.id === runId);
+    return Boolean(run) && ["completed", "failed", "error", "cancelled", "waiting"].includes(String(run!.status));
+  }, 90_000);
+  await sleep(500);
+  const threadId = run?.threadId as string | undefined;
+  return { routine: made.body.routine.id, runStatus: ran.status, status: run?.status, resultSummary: String(run?.summary ?? run?.result ?? run?.detail ?? "").slice(0, 300), threadId, runBot: run?.botId, tools: threadId ? await toolRows(token, threadId) : null, reply: threadId ? (await rows(token, threadId)).at(-1)?.text?.slice(0, 300) : null, promptHead: JSON.stringify(dump()?.prompt ?? "").slice(0, 400) };
 };
 const handOff = (to: string, extra: Record<string, unknown> = {}) => ({ name: "coordinate_bots", server: "agents", input: { bot_ids: [to], message: "Rooms 12, Staff hours 86, Sales 4200.", ...extra } });
 
@@ -66,6 +69,8 @@ it("walks the two studios", async () => {
   record("setup: as stored (owner's copy)", await Promise.all([bookkeeping, rooms, hours, sales].map(async ({ id }) => { const b = await copy(owner, id); return { name: b?.name, section: b?.section, access: b?.access, visibility: b?.visibility }; })));
   record("the bots the member lists", (await bots(member)).map((bot) => ({ name: bot.name, section: bot.section, yourAccess: bot.yourAccess, private: (bot as { defaultBot?: unknown }).defaultBot ? "own MausBot" : undefined })));
 
+  const cocoa = (await bots(owner)).find((bot) => bot.name !== "MausBot" && !["Bookkeeping", "Rooms", "Staff Hours", "Sales"].includes(bot.name));
+  record("the bot nobody made, as the owner's copy has it", cocoa ? { name: cocoa.name, section: cocoa.section, access: cocoa.access, visibility: cocoa.visibility, chief: (cocoa as unknown as { chiefOfStaff?: unknown }).chiefOfStaff, reportsTo: (cocoa as unknown as { reportsTo?: unknown }).reportsTo } : null);
   // --- who a B bot can reach at all
   record("Rooms' list_bots, as the bot sees it", await say(owner, rooms.id, rooms.mainThreadId ?? rooms.threadId, "Who can you reach?", [{ name: "list_bots", server: "agents", input: {} }]));
   // --- the control: inside Studio B
@@ -132,7 +137,7 @@ it("walks the two studios", async () => {
     if (!threadId) continue;
     const capability = await team.capability(rooms.id, threadId).catch(() => null);
     if (!capability) { record(`session_search from ${label}`, "no capability"); continue; }
-    const search = async (q: string) => { const r = await fetch(`${team.base}/api/internal/session-search?query=${q}&q=${q}`, { headers: { authorization: `Bearer ${capability}` } }); return { status: r.status, hit: (await r.text()).includes(q) }; };
+    const search = async (q: string) => { const r = await fetch(`${team.base}/api/internal/session-search?fromBotId=${rooms.id}&q=${q}`, { headers: { authorization: `Bearer ${capability}` } }); return { status: r.status, hit: (await r.text()).includes(q) }; };
     record(`session_search from ${label}`, { main: await search("MAINCHATNUMBER"), private: await search("PRIVATECHATNUMBER") });
   }
   record("the main chat as the owner reads it, the numbers line", (await rows(owner, main)).filter((row) => row.text?.includes("MAINCHATNUMBER")).map((row) => row.text?.slice(0, 80)));
@@ -144,4 +149,4 @@ it("walks the two studios", async () => {
   await team.as(owner, "PUT", `/api/bots/${bookkeeping.id}/access`, ONLY_OWNER);
   const narrow = await team.as(owner, "PUT", `/api/bots/${rooms.id}/access`, ONLY_OWNER);
   record("Rooms narrowed to the owner too: hand-off then?", { set: narrow.status, run: await routineRun(owner, rooms.id, "Evening, narrow", [handOff(bookkeeping.id)]), memberStillLists: (await bots(member)).some((bot) => bot.name === "Rooms") });
-}, 420_000);
+}, 1_200_000);
