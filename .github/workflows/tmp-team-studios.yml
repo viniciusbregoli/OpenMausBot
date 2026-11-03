@@ -1,0 +1,36 @@
+name: tmp team studios
+on:
+  push:
+    branches: [tmp/team-studios]
+permissions:
+  contents: read
+jobs:
+  studios:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 3
+          persist-credentials: false
+      - run: git diff --name-only db8ae8d69eab2d7f4cb1bf4430099d91bf65cf9d HEAD; ! git diff --name-only db8ae8d69eab2d7f4cb1bf4430099d91bf65cf9d HEAD | grep -vE '^\.github/(workflows/tmp-team-studios\.yml|tmp-team-studios/)'
+      - uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - run: pnpm install --frozen-lockfile
+      - name: Walk the two studios
+        env:
+          STUDIOS_OUT: ${{ github.workspace }}/studios.json
+        run: |
+          cp .github/tmp-team-studios/two-studios.e2e.test.ts server/tmp-two-studios.e2e.test.ts
+          npx vitest run server/tmp-two-studios.e2e.test.ts --reporter=default 2>&1 | tee studios.log; exit ${PIPESTATUS[0]}
+        shell: bash
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: studios
+          path: |
+            studios.json
+            studios.log
+          retention-days: 3
