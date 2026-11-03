@@ -56,97 +56,58 @@ beforeAll(async () => {
 }, 180_000);
 afterAll(async () => { await fx?.close(); });
 
-it("walks the two studios", async () => {
-  const make = async (name: string, section: string, access?: unknown) => {
-    const made = await team.as(owner, "POST", "/api/bots", { name, section });
-    if (made.status !== 201) throw new Error(`${name}: ${made.status} ${JSON.stringify(made.body)}`);
-    if (access) { const set = await team.as(owner, "PUT", `/api/bots/${made.body.bot.id}/access`, access); if (set.status !== 200) throw new Error(`${name} access: ${set.status} ${JSON.stringify(set.body)}`); }
+it("the rest of the two studios", async () => {
+  const make = async (token: string, name: string, section: string, access?: unknown) => {
+    const made = await team.as(token, "POST", "/api/bots", { name, section });
+    if (made.status !== 201) return { error: made.status, body: made.body } as unknown as Bot;
+    if (access) { const set = await team.as(token, "PUT", `/api/bots/${made.body.bot.id}/access`, access); if (set.status !== 200) throw new Error(`${name} access: ${set.status} ${JSON.stringify(set.body)}`); }
     return made.body.bot as Bot;
   };
   const ONLY_OWNER = { everyone: "none", people: {} }, B = { everyone: "none", people: { [MEMBER.email]: "chat" } };
-  const bookkeeping = await make("Bookkeeping", "Studio A", ONLY_OWNER), rooms = await make("Rooms", "Studio B", B), hours = await make("Staff Hours", "Studio B", B), sales = await make("Sales", "Studio B", B);
   const copy = async (token: string, id: string) => (await bots(token)).find((bot) => bot.id === id);
-  record("setup: as stored (owner's copy)", await Promise.all([bookkeeping, rooms, hours, sales].map(async ({ id }) => { const b = await copy(owner, id); return { name: b?.name, section: b?.section, access: b?.access, visibility: b?.visibility }; })));
-  record("the bots the member lists", (await bots(member)).map((bot) => ({ name: bot.name, section: bot.section, yourAccess: bot.yourAccess, private: (bot as { defaultBot?: unknown }).defaultBot ? "own MausBot" : undefined })));
-
-  const cocoa = (await bots(owner)).find((bot) => bot.name !== "MausBot" && !["Bookkeeping", "Rooms", "Staff Hours", "Sales"].includes(bot.name));
-  record("the bot nobody made, as the owner's copy has it", cocoa ? { name: cocoa.name, section: cocoa.section, access: cocoa.access, visibility: cocoa.visibility, chief: (cocoa as unknown as { chiefOfStaff?: unknown }).chiefOfStaff, reportsTo: (cocoa as unknown as { reportsTo?: unknown }).reportsTo } : null);
-  // --- who a B bot can reach at all
-  record("Rooms' list_bots, as the bot sees it", await say(owner, rooms.id, rooms.mainThreadId ?? rooms.threadId, "Who can you reach?", [{ name: "list_bots", server: "agents", input: {} }]));
-  // --- the control: inside Studio B
-  const inB = await routineRun(owner, rooms.id, "B to B", [handOff(hours.id)]);
-  record("CONTROL owner's routine on Rooms -> Staff Hours (same people)", inB);
-  await until(idle, 30_000);
-  // --- the hand-off itself
-  const bookkeepingBefore = (await rows(owner, bookkeeping.mainThreadId ?? bookkeeping.threadId)).length;
-  record("OWNER's routine on Rooms -> Bookkeeping by id", await routineRun(owner, rooms.id, "Evening numbers", [handOff(bookkeeping.id)]));
-  record("OWNER's routine on Rooms -> Bookkeeping by name", await routineRun(owner, rooms.id, "Evening numbers by name", [handOff("Bookkeeping")]));
-  record("OWNER's routine, one-way reply:none -> Bookkeeping", await routineRun(owner, rooms.id, "Evening one way", [handOff(bookkeeping.id, { reply: "none" })]));
-  record("MEMBER's routine on Rooms -> Bookkeeping by id", await routineRun(member, rooms.id, "Mara evening numbers", [handOff(bookkeeping.id)]));
-  record("MEMBER's routine on Rooms -> Bookkeeping by name", await routineRun(member, rooms.id, "Mara evening by name", [handOff("Bookkeeping")]));
-  const mineThread = (await team.as(member, "POST", `/api/bots/${rooms.id}/tasks`, { title: "My numbers" })).body.task?.threadId;
-  record("MEMBER's own private chat with Rooms -> Bookkeeping by name", await say(member, rooms.id, mineThread, "Send this to Bookkeeping", [handOff("Bookkeeping")]));
-  record("MEMBER in Rooms' main chat -> Bookkeeping by name", await say(member, rooms.id, rooms.mainThreadId ?? rooms.threadId, "Send this to Bookkeeping", [handOff("Bookkeeping")]));
-  const bookkeepingBot = await copy(owner, bookkeeping.id);
-  record("Bookkeeping afterwards, as the owner sees it: did anything arrive?", { before: bookkeepingBefore, now: (await rows(owner, bookkeeping.mainThreadId ?? bookkeeping.threadId)).length, threads: ((bookkeepingBot as unknown as { tasks?: Array<{ title?: string; threadId: string }> })?.tasks ?? []).map((task) => task.title) });
-
-  // --- can the member see or reach Bookkeeping or what it got?
-  const bb = bookkeeping.mainThreadId ?? bookkeeping.threadId;
-  const statuses: Record<string, number> = {};
-  for (const [method, path, body] of [["GET", `/api/threads/${bb}/messages`], ["POST", `/api/bots/${bookkeeping.id}/messages`, { text: "Hi", threadId: bb }], ["POST", `/api/bots/${bookkeeping.id}/tasks`, { title: "Mine" }], ["PUT", `/api/bots/${bookkeeping.id}/access`, { everyone: "chat", people: {} }],
-    ["POST", "/api/routines", { name: "Peek", prompt: "Hi", botId: bookkeeping.id, schedule: { type: "once", at: Date.now() + 86_400_000 } }], ["POST", "/api/groups", { memberIds: [rooms.id, bookkeeping.id], name: "Mixed", setup: { bulletin: "", defaultResponder: { kind: "everyone" } } }], ["GET", `/api/bots/${bookkeeping.id}/memory/mine`], ["PATCH", `/api/bots/${bookkeeping.id}`, { color: "teal" }]] as Array<[string, string, unknown?]>) statuses[`${method} ${path.replaceAll(bookkeeping.id, "<bookkeeping>").replaceAll(bb, "<its main chat>")}`] = (await team.as(member, method, path, body)).status;
-  record("member against Bookkeeping's routes", statuses);
-  const everywhere = await Promise.all(["/api/routines", "/api/today", "/api/needs-you", "/api/inbox", "/api/team/people", "/api/search?q=Bookkeeping", "/api/usage"].map(async (path) => { const r = await team.as(member, "GET", path); return { path, status: r.status, names: JSON.stringify(r.body).includes("Bookkeeping") }; }));
-  record("does the name Bookkeeping appear in what the member's app reads?", everywhere);
-  const memberThreadTexts = JSON.stringify(await rows(member, mineThread)) + JSON.stringify(await rows(member, rooms.mainThreadId ?? rooms.threadId));
-  record("does the name reach the member through a refused hand-off?", { inMemberPrivateChat: /Bookkeeping/.test(JSON.stringify(await rows(member, mineThread))), inMain: /Bookkeeping/.test(JSON.stringify(await rows(member, rooms.mainThreadId ?? rooms.threadId))), excerpt: (memberThreadTexts.match(/.{0,120}isn't shared here.{0,120}/) ?? [null])[0] });
-  // A room with both, as the owner.
-  const mixed = await team.as(owner, "POST", "/api/groups", { memberIds: [rooms.id, bookkeeping.id], name: "Numbers", setup: { bulletin: "", defaultResponder: { kind: "everyone" } } });
-  record("owner: a group chat with Rooms and Bookkeeping", { status: mixed.status, body: JSON.stringify(mixed.body).slice(0, 400) });
-
-  // --- what works instead
-  const ownerBots = await bots(owner), ownMausBot = ownerBots.find((bot) => (bot as { defaultBot?: unknown }).defaultBot);
-  record("owner's own MausBot", { name: ownMausBot?.name, visibility: ownMausBot?.visibility, section: ownMausBot?.section });
-  if (ownMausBot) record("owner's own MausBot -> Bookkeeping", await say(owner, ownMausBot.id, ownMausBot.mainThreadId ?? ownMausBot.threadId, "Pass this to Bookkeeping", [handOff(bookkeeping.id)]));
-  await until(idle, 30_000);
-  record("Bookkeeping after MausBot's hand-off", { rows: (await rows(owner, bb)).length, threads: (((await copy(owner, bookkeeping.id)) as unknown as { tasks?: Array<{ title?: string }> })?.tasks ?? []).map((task) => task.title) });
-  const asPerson = { name: "message_person", server: "agents", input: { to: OWNER.email, message: "Rooms 12, Staff hours 86, Sales 4200." } };
-  record("owner's routine on Rooms: message_person to the owner", await routineRun(owner, rooms.id, "Tell Olive", [asPerson]));
-  record("member's routine on Rooms: message_person to the owner", await routineRun(member, rooms.id, "Mara tells Olive", [asPerson]));
-  await sleep(1500);
-  const inbox = await team.as(owner, "GET", "/api/inbox");
-  record("owner's inbox", { status: inbox.status, rows: (inbox.body.rows ?? []).slice(0, 8).map((row: Record<string, unknown>) => ({ tab: row.tab, from: row.from ?? row.fromName, text: String(row.text ?? row.excerpt ?? "").slice(0, 120), kind: row.kind })) });
-  // Does the routine's own report reach anyone's inbox, and who may read a run's chat?
-  const ownerRoutine = facts["OWNER's routine on Rooms -> Bookkeeping by id"] as { threadId?: string };
-  const memberRoutine = facts["MEMBER's routine on Rooms -> Bookkeeping by id"] as { threadId?: string };
-  record("who may read a routine's run chat", { ownerRun: { owner: (await team.as(owner, "GET", `/api/threads/${ownerRoutine.threadId}/messages`)).status, member: (await team.as(member, "GET", `/api/threads/${ownerRoutine.threadId}/messages`)).status }, memberRun: { owner: (await team.as(owner, "GET", `/api/threads/${memberRoutine.threadId}/messages`)).status, member: (await team.as(member, "GET", `/api/threads/${memberRoutine.threadId}/messages`)).status } });
-
-  // --- where the numbers can come from: what the member typed, in each kind of chat, and what a routine's turn reads
-  const remember = (text: string) => ({ name: "memory_update", server: "agents", input: { action: "append", text } });
-  const main = rooms.mainThreadId ?? rooms.threadId;
-  await say(member, rooms.id, main, "Rooms today: 12 MAINCHATNUMBER", [remember("Rooms today: 12 MAINCHATNUMBER")]);
-  await say(member, rooms.id, mineThread, "Rooms today: 13 PRIVATECHATNUMBER", [remember("Rooms today: 13 PRIVATECHATNUMBER")]);
-  await until(idle, 30_000);
-  const routineSees = await routineRun(owner, rooms.id, "Reads the numbers", null);
-  const seen = dump();
-  record("what an owner's routine turn on Rooms is given", { routine: routineSees.runStatus, systemHasMain: seen?.systemPrompt?.includes("MAINCHATNUMBER") ?? null, systemHasPrivate: seen?.systemPrompt?.includes("PRIVATECHATNUMBER") ?? null, promptHasMain: JSON.stringify(seen?.prompt ?? "").includes("MAINCHATNUMBER"), promptHasPrivate: JSON.stringify(seen?.prompt ?? "").includes("PRIVATECHATNUMBER") });
-  const memberRoutineSees = await routineRun(member, rooms.id, "Mara reads the numbers", null);
-  const seenM = dump();
-  record("what a member's routine turn on Rooms is given", { routine: memberRoutineSees.runStatus, systemHasMain: seenM?.systemPrompt?.includes("MAINCHATNUMBER") ?? null, systemHasPrivate: seenM?.systemPrompt?.includes("PRIVATECHATNUMBER") ?? null });
-  for (const [label, threadId] of [["owner's routine", routineSees.threadId], ["member's routine", memberRoutineSees.threadId]] as const) {
-    if (!threadId) continue;
-    const capability = await team.capability(rooms.id, threadId).catch(() => null);
-    if (!capability) { record(`session_search from ${label}`, "no capability"); continue; }
-    const search = async (q: string) => { const r = await fetch(`${team.base}/api/internal/session-search?fromBotId=${rooms.id}&q=${q}`, { headers: { authorization: `Bearer ${capability}` } }); return { status: r.status, hit: (await r.text()).includes(q) }; };
-    record(`session_search from ${label}`, { main: await search("MAINCHATNUMBER"), private: await search("PRIVATECHATNUMBER") });
-  }
-  record("the main chat as the owner reads it, the numbers line", (await rows(owner, main)).filter((row) => row.text?.includes("MAINCHATNUMBER")).map((row) => row.text?.slice(0, 80)));
-  record("the member's private chat as the owner reads it", (await team.as(owner, "GET", `/api/threads/${mineThread}/messages`)).status);
-
-  // --- the ways it would work: shared with the same people
-  const widen = await team.as(owner, "PUT", `/api/bots/${bookkeeping.id}/access`, { everyone: "none", people: { [MEMBER.email]: "view" } });
-  record("Bookkeeping shared with the member at Can view: does the hand-off work then?", { set: widen.status, memberLists: (await bots(member)).some((bot) => bot.name === "Bookkeeping"), run: await routineRun(owner, rooms.id, "Evening, wider", [handOff(bookkeeping.id)]) });
+  // The moment before the owner restricts it.
+  const bookkeeping = await make(owner, "Bookkeeping", "Studio A");
+  record("right after New bot, before Share: does the member list it?", { memberLists: Boolean(await copy(member, bookkeeping.id)), yourAccess: (await copy(member, bookkeeping.id))?.yourAccess, ownerCopy: (await copy(owner, bookkeeping.id))?.access });
   await team.as(owner, "PUT", `/api/bots/${bookkeeping.id}/access`, ONLY_OWNER);
-  const narrow = await team.as(owner, "PUT", `/api/bots/${rooms.id}/access`, ONLY_OWNER);
-  record("Rooms narrowed to the owner too: hand-off then?", { set: narrow.status, run: await routineRun(owner, rooms.id, "Evening, narrow", [handOff(bookkeeping.id)]), memberStillLists: (await bots(member)).some((bot) => bot.name === "Rooms") });
-}, 1_200_000);
+  const rooms = await make(owner, "Rooms", "Studio B", B), hours = await make(owner, "Staff Hours", "Studio B", B), sales = await make(owner, "Sales", "Studio B", B);
+  // What a member's own new bot is.
+  const mine = await make(member, "Marketing Helper", "");
+  record("a bot the member makes", { status: (mine as unknown as { error?: number }).error ?? 201, body: JSON.stringify(mine).slice(0, 300), ownerSees: Boolean(mine.id && await copy(owner, mine.id)), access: mine.id ? (await copy(owner, mine.id))?.access : null, visibility: mine.id ? (await copy(owner, mine.id))?.visibility : null });
+  // Whose MausBot is whose, and what an admin can do with someone else's.
+  const all = await bots(owner), people = (bot: Bot) => JSON.stringify(bot.visibility ?? "");
+  const defaults = all.filter((bot) => (bot as { defaultBot?: unknown }).defaultBot);
+  record("every MausBot the owner's list has", defaults.map((bot) => ({ name: bot.name, visibility: bot.visibility, yourAccess: bot.yourAccess, hidden: (bot as { sidebarHidden?: unknown }).sidebarHidden })));
+  const ownMaus = defaults.find((bot) => people(bot).includes(OWNER.email)), maraMaus = (await bots(member)).find((bot) => (bot as { defaultBot?: unknown }).defaultBot)!;
+  const maraMain = maraMaus.mainThreadId ?? maraMaus.threadId;
+  await say(member, maraMaus.id, maraMain, "My salary is MARAPRIVATE", null);
+  const maraThreads = ((await copy(member, maraMaus.id)) as unknown as { tasks?: Array<{ threadId: string; private?: boolean; title?: string; inbox?: boolean }> }).tasks;
+  record("the member's MausBot's chats, as the member sees them", maraThreads?.map((task) => ({ title: task.title, private: task.private, inbox: task.inbox, isMain: task.threadId === maraMain })));
+  const peek = await team.as(owner, "GET", `/api/threads/${maraMain}/messages`);
+  record("the owner reading the member's MausBot's main chat", { status: peek.status, seesWords: JSON.stringify(peek.body).includes("MARAPRIVATE") });
+  const poke = await team.as(owner, "POST", `/api/bots/${maraMaus.id}/messages`, { text: "Hello from the owner", threadId: maraMain });
+  record("the owner writing in it", { status: poke.status, body: JSON.stringify(poke.body).slice(0, 200) });
+  // The owner's own MausBot is the same audience as Bookkeeping.
+  if (ownMaus) {
+    const before = ((await copy(owner, bookkeeping.id)) as unknown as { tasks?: unknown[] }).tasks?.length;
+    record("owner's own MausBot -> Bookkeeping", await say(owner, ownMaus.id, ownMaus.mainThreadId ?? ownMaus.threadId, "Pass this to Bookkeeping", [handOff(bookkeeping.id)]));
+    await until(idle, 30_000); await sleep(1500);
+    const bk = (await copy(owner, bookkeeping.id)) as unknown as { tasks?: Array<{ title?: string; threadId: string }> };
+    record("Bookkeeping after it", { before, now: bk.tasks?.length, lines: bk.tasks ? await Promise.all(bk.tasks.map(async (task) => ({ title: task.title, last: (await rows(owner, task.threadId)).at(-2)?.text?.slice(0, 160) }))) : null });
+    record("a routine on the owner's own MausBot -> Bookkeeping", await routineRun(owner, ownMaus.id, "Evening relay", [handOff(bookkeeping.id, { reply: "none" })]));
+    record("and can MausBot read what reached the owner's inbox?", { inboxTools: "message_person lines land in this bot's inbox chat", prompt: JSON.stringify(dump()?.prompt ?? "").includes("MARA") });
+  }
+  // A place in Studio B for numbers: one group chat with the three bots, made by each of them.
+  const groupBody = { memberIds: [rooms.id, hours.id, sales.id], name: "Studio B numbers", setup: { bulletin: "", defaultResponder: { kind: "everyone" } } };
+  const byMember = await team.as(member, "POST", "/api/groups", groupBody); const byOwner = await team.as(owner, "POST", "/api/groups", { ...groupBody, name: "Studio B numbers 2" });
+  record("a group chat of the three Studio B bots", { member: byMember.status, memberBody: JSON.stringify(byMember.body).slice(0, 240), owner: byOwner.status });
+  const mixedAsMember = await team.as(member, "POST", "/api/groups", { memberIds: [rooms.id, bookkeeping.id], name: "Mixed", setup: { bulletin: "", defaultResponder: { kind: "everyone" } } });
+  record("the member naming Bookkeeping in a group chat", { status: mixedAsMember.status, body: JSON.stringify(mixedAsMember.body).slice(0, 300) });
+  // A person's level on Bookkeeping as an Admin of the team: what making the Studio B manager an Admin does.
+  const adminToken = (await team.pair({ email: "ben@acme.test", role: "admin" as const })).token!;
+  const asAdmin = await copy(adminToken, bookkeeping.id);
+  record("a team Admin and Bookkeeping", { lists: Boolean(asAdmin), yourAccess: asAdmin?.yourAccess, readsMain: (await team.as(adminToken, "GET", `/api/threads/${bookkeeping.mainThreadId ?? bookkeeping.threadId}/messages`)).status });
+  // Who is on the Add people list: only those who opened the team.
+  const peopleBefore = await team.as(owner, "GET", "/api/team/people");
+  const addStranger = await team.as(owner, "PUT", `/api/bots/${sales.id}/access`, { everyone: "none", people: { [MEMBER.email]: "chat", "accepted-but-never-opened@acme.test": "chat" } });
+  record("sharing with someone who joined but never opened the team", { list: (peopleBefore.body.people ?? []).map((one: { email: string }) => one.email), status: addStranger.status, body: JSON.stringify(addStranger.body).slice(0, 200) });
+}, 600_000);
