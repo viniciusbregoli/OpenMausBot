@@ -1,0 +1,100 @@
+name: tmp rail run
+on:
+  push:
+    branches: [tmp/rail-run]
+permissions:
+  contents: read
+concurrency:
+  group: tmp-rail-run
+  cancel-in-progress: true
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      OUT: ${{ github.workspace }}/out
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: mkdir -p "$OUT" && python3 .github/tmp-account-test/checks.py
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: checks
+          path: out
+          retention-days: 3
+  realapp:
+    runs-on: macos-latest
+    timeout-minutes: 95
+    env:
+      APP_DIR: ${{ github.workspace }}/app-under-test
+      OUT: ${{ github.workspace }}/out
+      MAIN_HEAD: bf398d11d
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 40
+          persist-credentials: false
+      - name: This branch adds only the test files to main
+        run: |
+          mkdir -p "$OUT" "$APP_DIR"
+          git diff --name-only "$MAIN_HEAD" HEAD | tee "$OUT/diff-from-main.txt"
+          ! grep -vE '^\.github/(workflows/tmp-rail-run\.yml|tmp-account-test/)' "$OUT/diff-from-main.txt"
+          git log -1 --format=%H "$MAIN_HEAD" | tee "$OUT/main-head.txt"
+      - uses: pnpm/action-setup@ff378ebe6b225b0680b81c1ad4498ae0d1d3a5e3
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020
+        with:
+          node-version: 24
+      - name: Built app for this head
+        id: built
+        uses: actions/cache/restore@v4
+        with:
+          path: built-app.tgz
+          key: rail-run-app-bf398d11d-arm64-1
+      - name: Build the app from main
+        if: steps.built.outputs.cache-hit != 'true'
+        env:
+          NODE_OPTIONS: --max-old-space-size=4096
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm package:prepare
+          pnpm build:speech
+          pnpm build:cua
+          pnpm exec electron-builder --mac dir --arm64 --publish never -c.mac.identity=null -c.mac.hardenedRuntime=false -c.mac.notarize=false
+          COPYFILE_DISABLE=1 tar -czf built-app.tgz -C release/mac-arm64 OpenMausBot.app
+      - name: Keep the built app for a re-run
+        if: steps.built.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: built-app.tgz
+          key: rail-run-app-bf398d11d-arm64-1
+      - name: Unpack
+        run: |
+          tar -xzf built-app.tgz -C "$APP_DIR"
+          plutil -extract CFBundleShortVersionString raw "$APP_DIR/OpenMausBot.app/Contents/Info.plist"
+      - name: Fixture
+        run: zsh .github/tmp-account-test/setup.sh 2>&1 | tee "$OUT/setup.log"
+      - name: Drive the real app
+        timeout-minutes: 45
+        run: node .github/tmp-account-test/rail-drive.mjs 2>&1 | tee "$OUT/drive.log"; exit ${PIPESTATUS[0]}
+        shell: bash
+      - name: Collect logs
+        if: always()
+        run: |
+          cp -R "$HOME/Library/Logs/OpenMausBot" "$OUT/app-logs" 2>/dev/null || true
+          cp "$RUNNER_TEMP/fx/admin.jsonl" "$OUT/" 2>/dev/null || true
+          ls -la "$HOME" > "$OUT/home-listing.txt" 2>/dev/null || true
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: rail-run
+          path: out
+          retention-days: 3

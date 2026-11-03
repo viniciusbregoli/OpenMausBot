@@ -1,0 +1,151 @@
+{
+ "accounts": {
+  "a": {
+   "id": "acct-a",
+   "email": "alice@omb-test.example",
+   "clouds": [
+    "home-a",
+    "second-a",
+    "team"
+   ],
+   "plan": "pro"
+  },
+  "b": {
+   "id": "acct-b",
+   "email": "bob@omb-test.example",
+   "clouds": [
+    "home-b",
+    "team",
+    "ended-b",
+    "setup-b"
+   ],
+   "plan": "pro"
+  },
+  "c": {
+   "id": "acct-c",
+   "email": "carol@omb-test.example",
+   "clouds": [],
+   "plan": "free"
+  },
+  "d": {
+   "id": "acct-d",
+   "email": "dave@omb-test.example",
+   "clouds": [
+    "team"
+   ],
+   "plan": "free"
+  },
+  "e": {
+   "id": "acct-e",
+   "email": "erin@omb-test.example",
+   "clouds": [
+    "e1",
+    "e2",
+    "e3",
+    "e4",
+    "e5",
+    "e6"
+   ],
+   "plan": "pro"
+  },
+  "f": {
+   "id": "acct-f",
+   "email": "frank@omb-test.example",
+   "clouds": [],
+   "plan": "free",
+   "shortSeconds": 25
+  }
+ },
+ "clouds": {
+  "home-a": {
+   "id": "home-a",
+   "name": "My Cloud",
+   "origin": "https://home-a.omb-test.example",
+   "port": 18810,
+   "primary": true,
+   "color": "blue",
+   "secret": "Y5O6k4F2Y-rq7b6LukAXUroBoO8Td7Ba0E7RUHn9THJaZVBtNqFBjA"
+  },
+  "second-a": {
+   "id": "second-a",
+   "name": "Alice Second",
+   "origin": "https://second-a.omb-test.example",
+   "port": 18820,
+   "color": "green",
+   "secret": "g78B9IfZYILYVVgEeFLamcvx8guL6jwRFzrPgNDeY8LfbRUczthrJg"
+  },
+  "team": {
+   "id": "team",
+   "name": "Shared Team",
+   "origin": "https://team.omb-test.example",
+   "port": 18830,
+   "teamId": "team-shared",
+   "role": "member",
+   "color": "amber",
+   "secret": "SKbd_EzFuX6agrtejHBwiCg30zWIU3HTEasjEh9WRAhxoIQPfebOPw"
+  },
+  "home-b": {
+   "id": "home-b",
+   "name": "My Cloud",
+   "origin": "https://home-b.omb-test.example",
+   "port": 18840,
+   "primary": true,
+   "color": "red",
+   "secret": "uD4OS_7_C90gZ2xxALVsRceTBnYNbKVlH8q9MIVkF4ZkWuTNrqyOsw"
+  },
+  "ended-b": {
+   "id": "ended-b",
+   "name": "Old Bob",
+   "origin": "https://ended-b.omb-test.example",
+   "status": "ended",
+   "removable": true,
+   "color": "rose",
+   "deleteAfter": 1893456000000
+  },
+  "setup-b": {
+   "id": "setup-b",
+   "name": "New Bob",
+   "status": "setting_up",
+   "color": "teal",
+   "setup": {
+    "step": "installing"
+   }
+  },
+  "e1": {
+   "id": "e1",
+   "name": "Erin 1",
+   "origin": "https://e1.omb-test.example",
+   "color": "purple"
+  },
+  "e2": {
+   "id": "e2",
+   "name": "Erin 2",
+   "origin": "https://e2.omb-test.example",
+   "color": "teal"
+  },
+  "e3": {
+   "id": "e3",
+   "name": "Erin 3",
+   "origin": "https://e3.omb-test.example",
+   "color": "purple"
+  },
+  "e4": {
+   "id": "e4",
+   "name": "Erin 4",
+   "origin": "https://e4.omb-test.example",
+   "color": "teal"
+  },
+  "e5": {
+   "id": "e5",
+   "name": "Erin 5",
+   "origin": "https://e5.omb-test.example",
+   "color": "purple"
+  },
+  "e6": {
+   "id": "e6",
+   "name": "Erin 6",
+   "origin": "https://e6.omb-test.example",
+   "color": "teal"
+  }
+ }
+}
