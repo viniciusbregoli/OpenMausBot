@@ -10,7 +10,7 @@ concurrency:
 jobs:
   walk:
     runs-on: macos-latest
-    timeout-minutes: 75
+    timeout-minutes: 90
     env:
       APP_DIR: ${{ github.workspace }}/app-under-test
       OUT: ${{ github.workspace }}/out
@@ -60,7 +60,7 @@ jobs:
       - name: Fixture
         run: zsh .github/tmp-team-walk/setup.sh 2>&1 | tee "$OUT/setup.log"
       - name: Walk the real app
-        timeout-minutes: 30
+        timeout-minutes: 45
         run: cp .github/tmp-team-walk/drive.mjs "$RUNNER_TEMP/fx/drive.mjs"; node "$RUNNER_TEMP/fx/drive.mjs" 2>&1 | tee "$OUT/drive.log"; exit ${PIPESTATUS[0]}
         shell: bash
       - name: Collect logs
